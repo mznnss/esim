@@ -11,7 +11,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>body { font-family: 'Plus Jakarta Sans', sans-serif; }</style>
 </head>
-<body class="bg-slate-50 text-slate-900 antialiased min-h-screen flex flex-col justify-between">
+<body class="bg-slate-50 text-slate-900 antialiased min-h-screen flex flex-col justify-between relative">
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toast-container" class="fixed top-5 right-5 z-[999] flex flex-col gap-2 max-w-xs w-full pointer-events-none"></div>
 
   <!-- NAVBAR -->
   <nav class="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200">
@@ -23,16 +26,15 @@
         <span class="font-extrabold text-xl tracking-tight text-slate-900">eSIM<span class="text-indigo-600">Go</span></span>
       </div>
 
-      <!-- BADGE STATUS ADMIN REAL-TIME -->
-      <div id="admin-status-badge" class="flex items-center gap-2 px-3 py-1.5 rounded-full border bg-slate-100 text-slate-500 border-slate-200 transition-all duration-300">
+      <div id="admin-status-badge" class="flex items-center gap-2 px-3.5 py-1.5 rounded-full border bg-slate-100 text-slate-500 border-slate-200 transition-all duration-300">
         <span id="status-dot" class="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
         <span id="status-text" class="text-xs font-bold">Mengecek Status...</span>
       </div>
     </div>
   </nav>
 
-  <!-- BANNER TOKO TUTUP (MUNCUL OTOMATIS SAAT ADMIN OFFLINE) -->
-  <div id="store-closed-banner" class="hidden bg-rose-600 text-white text-center py-2.5 px-4 text-xs font-bold transition-all">
+  <!-- BANNER TOKO TUTUP -->
+  <div id="store-closed-banner" class="hidden bg-rose-600 text-white text-center py-2.5 px-4 text-xs font-bold shadow-inner">
     ⚠️ Toko sedang Offline / Tutup. Admin sedang tidak membuka dashboard pantau, pesanan ditutup sementara.
   </div>
 
@@ -56,7 +58,7 @@
           <input 
             type="text" 
             id="search-input"
-            placeholder="Cari negara tujuan (cth: Jepang, Singapura, Eropa)..."
+            placeholder="Cari negara tujuan..."
             class="w-full pl-12 pr-4 py-4 rounded-2xl bg-white border border-slate-200 shadow-lg shadow-slate-200/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 text-sm font-medium"
             onkeyup="filterDestinations()"
           />
@@ -65,104 +67,9 @@
     </div>
   </header>
 
-  <!-- KATALOG -->
+  <!-- KATALOG DINAMIS -->
   <main id="destinasi" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex-grow w-full">
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      
-      <!-- Jepang -->
-      <div class="product-card bg-white border border-slate-200 rounded-3xl p-6 hover:shadow-xl transition-all duration-300 flex flex-col justify-between" data-country="jepang japan asia tokyo osaka">
-        <div>
-          <div class="flex items-center justify-between mb-4">
-            <div class="flex items-center gap-3">
-              <span class="text-4xl">🇯🇵</span>
-              <div>
-                <h3 class="font-bold text-lg text-slate-900">Jepang (Japan)</h3>
-                <p class="text-xs text-slate-500">Softbank / Docomo 5G</p>
-              </div>
-            </div>
-            <span class="bg-indigo-50 text-indigo-700 text-xs font-bold px-2.5 py-1 rounded-lg">Best Seller</span>
-          </div>
-
-          <div class="space-y-2.5 border-t border-slate-100 pt-4 my-4 text-sm text-slate-600">
-            <div class="flex justify-between"><span>Kuota Data:</span><span class="font-bold text-slate-800">10 GB (High Speed)</span></div>
-            <div class="flex justify-between"><span>Masa Aktif:</span><span class="font-semibold text-slate-800">7 Hari</span></div>
-          </div>
-        </div>
-
-        <div class="border-t border-slate-100 pt-4 flex items-center justify-between">
-          <div>
-            <span class="text-xs text-slate-400 block font-medium">Harga</span>
-            <span class="text-xl font-extrabold text-indigo-600">Rp 145.000</span>
-          </div>
-          <button onclick="openOrderModal('Jepang - 10 GB (7 Hari)', 145000)" class="btn-order bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl transition text-sm flex items-center gap-1.5 shadow-sm">
-            Beli Sekarang <i data-lucide="arrow-right" class="w-4 h-4"></i>
-          </button>
-        </div>
-      </div>
-
-      <!-- Singapura -->
-      <div class="product-card bg-white border border-slate-200 rounded-3xl p-6 hover:shadow-xl transition-all duration-300 flex flex-col justify-between" data-country="singapura singapore asean asia">
-        <div>
-          <div class="flex items-center justify-between mb-4">
-            <div class="flex items-center gap-3">
-              <span class="text-4xl">🇸🇬</span>
-              <div>
-                <h3 class="font-bold text-lg text-slate-900">Singapura</h3>
-                <p class="text-xs text-slate-500">Singtel 5G</p>
-              </div>
-            </div>
-            <span class="bg-emerald-50 text-emerald-700 text-xs font-bold px-2.5 py-1 rounded-lg">Unlimited</span>
-          </div>
-
-          <div class="space-y-2.5 border-t border-slate-100 pt-4 my-4 text-sm text-slate-600">
-            <div class="flex justify-between"><span>Kuota Data:</span><span class="font-bold text-slate-800">Unlimited (FUP 2GB/hr)</span></div>
-            <div class="flex justify-between"><span>Masa Aktif:</span><span class="font-semibold text-slate-800">5 Hari</span></div>
-          </div>
-        </div>
-
-        <div class="border-t border-slate-100 pt-4 flex items-center justify-between">
-          <div>
-            <span class="text-xs text-slate-400 block font-medium">Harga</span>
-            <span class="text-xl font-extrabold text-indigo-600">Rp 85.000</span>
-          </div>
-          <button onclick="openOrderModal('Singapura - Unlimited (5 Hari)', 85000)" class="btn-order bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl transition text-sm flex items-center gap-1.5 shadow-sm">
-            Beli Sekarang <i data-lucide="arrow-right" class="w-4 h-4"></i>
-          </button>
-        </div>
-      </div>
-
-      <!-- Eropa -->
-      <div class="product-card bg-white border border-slate-200 rounded-3xl p-6 hover:shadow-xl transition-all duration-300 flex flex-col justify-between" data-country="eropa europe perancis jerman uk inggris italia belanda">
-        <div>
-          <div class="flex items-center justify-between mb-4">
-            <div class="flex items-center gap-3">
-              <span class="text-4xl">🇪🇺</span>
-              <div>
-                <h3 class="font-bold text-lg text-slate-900">Eropa (33 Negara)</h3>
-                <p class="text-xs text-slate-500">Vodafone Multi-Carrier</p>
-              </div>
-            </div>
-            <span class="bg-indigo-50 text-indigo-700 text-xs font-bold px-2.5 py-1 rounded-lg">Multi-Negara</span>
-          </div>
-
-          <div class="space-y-2.5 border-t border-slate-100 pt-4 my-4 text-sm text-slate-600">
-            <div class="flex justify-between"><span>Kuota Data:</span><span class="font-bold text-slate-800">20 GB Total</span></div>
-            <div class="flex justify-between"><span>Masa Aktif:</span><span class="font-semibold text-slate-800">30 Hari</span></div>
-          </div>
-        </div>
-
-        <div class="border-t border-slate-100 pt-4 flex items-center justify-between">
-          <div>
-            <span class="text-xs text-slate-400 block font-medium">Harga</span>
-            <span class="text-xl font-extrabold text-indigo-600">Rp 320.000</span>
-          </div>
-          <button onclick="openOrderModal('Eropa 33 Negara - 20 GB (30 Hari)', 320000)" class="btn-order bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl transition text-sm flex items-center gap-1.5 shadow-sm">
-            Beli Sekarang <i data-lucide="arrow-right" class="w-4 h-4"></i>
-          </button>
-        </div>
-      </div>
-
-    </div>
+    <div id="product-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
   </main>
 
   <!-- MODAL TRANSAKSI -->
@@ -172,7 +79,7 @@
         <i data-lucide="x" class="w-5 h-5"></i>
       </button>
 
-      <!-- PHASE 1: EMAIL -->
+      <!-- PHASE 1: FORM EMAIL -->
       <div id="phase-form">
         <h3 class="text-lg font-bold text-slate-900 mb-1">Konfirmasi Pesanan</h3>
         <p class="text-xs text-slate-500 mb-4">Profil eSIM akan dikirimkan ke alamat email ini.</p>
@@ -199,7 +106,7 @@
         </div>
       </div>
 
-      <!-- PHASE 2: QRIS RIFKI CELL -->
+      <!-- PHASE 2: DISPLAY QRIS -->
       <div id="phase-qris" class="hidden text-center">
         <div class="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-semibold mb-2">
           <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span> Scan QRIS & Selesaikan Pembayaran
@@ -255,7 +162,7 @@
           <i data-lucide="clock" class="w-8 h-8"></i>
         </div>
         <h3 class="text-lg font-bold text-slate-900 mb-1">Bukti Berhasil Terkirim!</h3>
-        <p class="text-xs text-slate-500 mb-4">Admin Rifki Cell sedang memverifikasi pembayaran Anda.</p>
+        <p class="text-xs text-slate-500 mb-4">Admin Rifki Cell sedang memverifikasi saldo pembayaran Anda.</p>
         <div class="text-[11px] bg-slate-50 border border-slate-200 p-3 rounded-xl text-slate-500">
           Tetap di layar ini. Tampilan akan <b>otomatis berganti ke sukses</b> begitu diverifikasi.
         </div>
@@ -284,6 +191,7 @@
     &copy; 2026 eSIMGo • Rifki Cell.
   </footer>
 
+  <!-- SCRIPT NOTIFIKASI & LOGIC -->
   <script>
     lucide.createIcons();
 
@@ -299,14 +207,97 @@
 
     const modal = document.getElementById('checkout-modal');
 
-    // Cek Status Keaktifan Dashboard Admin (Real-Time Heartbeat)
+    // UI Custom Toast System
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      
+      const colors = {
+        success: 'bg-emerald-50 text-emerald-800 border-emerald-300',
+        error: 'bg-rose-50 text-rose-800 border-rose-300',
+        info: 'bg-indigo-50 text-indigo-800 border-indigo-300'
+      };
+
+      const icons = {
+        success: 'check-circle-2',
+        error: 'alert-circle',
+        info: 'info'
+      };
+
+      toast.className = `flex items-center gap-3 p-4 rounded-2xl border shadow-lg ${colors[type]} pointer-events-auto transform translate-y-[-20px] opacity-0 transition-all duration-300`;
+      toast.innerHTML = `
+        <i data-lucide="${icons[type]}" class="w-5 h-5 flex-shrink-0"></i>
+        <span class="text-xs font-semibold">${message}</span>
+      `;
+
+      container.appendChild(toast);
+      lucide.createIcons();
+
+      // Trigger animasi masuk
+      setTimeout(() => {
+        toast.classList.remove('translate-y-[-20px]', 'opacity-0');
+      }, 50);
+
+      // Trigger animasi keluar
+      setTimeout(() => {
+        toast.classList.add('translate-y-[-20px]', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    async function loadCatalogProducts() {
+      try {
+        const res = await fetch(`${FIREBASE_DB_URL}/products.json`);
+        const products = await res.json();
+        const grid = document.getElementById('product-grid');
+        grid.innerHTML = '';
+
+        if (!products) return;
+
+        Object.values(products).forEach(p => {
+          grid.innerHTML += `
+            <div class="product-card bg-white border border-slate-200 rounded-3xl p-6 hover:shadow-xl transition-all duration-300 flex flex-col justify-between" data-country="${p.name.toLowerCase()}">
+              <div>
+                <div class="flex items-center justify-between mb-4">
+                  <div class="flex items-center gap-3">
+                    <span class="text-4xl">${p.flag}</span>
+                    <div>
+                      <h3 class="font-bold text-lg text-slate-900">${p.name}</h3>
+                      <p class="text-xs text-slate-500">${p.network}</p>
+                    </div>
+                  </div>
+                  ${p.badge ? `<span class="bg-indigo-50 text-indigo-700 text-xs font-bold px-2.5 py-1 rounded-lg">${p.badge}</span>` : ''}
+                </div>
+
+                <div class="space-y-2.5 border-t border-slate-100 pt-4 my-4 text-sm text-slate-600">
+                  <div class="flex justify-between"><span>Kuota Data:</span><span class="font-bold text-slate-800">${p.quota}</span></div>
+                  <div class="flex justify-between"><span>Masa Aktif:</span><span class="font-semibold text-slate-800">${p.duration}</span></div>
+                </div>
+              </div>
+
+              <div class="border-t border-slate-100 pt-4 flex items-center justify-between">
+                <div>
+                  <span class="text-xs text-slate-400 block font-medium">Harga</span>
+                  <span class="text-xl font-extrabold text-indigo-600">Rp ${Number(p.price).toLocaleString('id-ID')}</span>
+                </div>
+                <button onclick="openOrderModal('${p.name} - ${p.quota} (${p.duration})', ${p.price})" class="btn-order bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl transition text-sm flex items-center gap-1.5 shadow-sm">
+                  Beli Sekarang <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                </button>
+              </div>
+            </div>
+          `;
+        });
+        lucide.createIcons();
+        checkAdminOnlineStatus();
+      } catch (e) { console.error(e); }
+    }
+
     async function checkAdminOnlineStatus() {
       try {
         const res = await fetch(`${FIREBASE_DB_URL}/admin_heartbeat.json`);
         const lastSeen = await res.json();
         const now = Date.now();
 
-        // Jika admin mengirim sinyal dalam 8 detik terakhir -> ONLINE
         if (lastSeen && (now - lastSeen < 8000)) {
           setStoreStatus(true);
         } else {
@@ -326,7 +317,7 @@
       const orderButtons = document.querySelectorAll('.btn-order');
 
       if (online) {
-        badge.className = "flex items-center gap-2 px-3 py-1.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200 transition-all";
+        badge.className = "flex items-center gap-2 px-3.5 py-1.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200 transition-all";
         dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse";
         text.innerText = "Admin Online (Buka)";
         banner.classList.add('hidden');
@@ -338,7 +329,7 @@
           btn.innerHTML = `Beli Sekarang <i data-lucide="arrow-right" class="w-4 h-4"></i>`;
         });
       } else {
-        badge.className = "flex items-center gap-2 px-3 py-1.5 rounded-full border bg-rose-50 text-rose-700 border-rose-200 transition-all";
+        badge.className = "flex items-center gap-2 px-3.5 py-1.5 rounded-full border bg-rose-50 text-rose-700 border-rose-200 transition-all";
         dot.className = "w-2.5 h-2.5 rounded-full bg-rose-500";
         text.innerText = "Admin Offline (Tutup)";
         banner.classList.remove('hidden');
@@ -353,9 +344,7 @@
       lucide.createIcons();
     }
 
-    // Interval cek status online setiap 3 detik
     setInterval(checkAdminOnlineStatus, 3000);
-    checkAdminOnlineStatus();
 
     function filterDestinations() {
       const query = document.getElementById('search-input').value.toLowerCase();
@@ -367,7 +356,7 @@
 
     function openOrderModal(packageName, price) {
       if (!isStoreOnline) {
-        alert('Maaf, toko sedang tutup karena admin sedang offline.');
+        showToast('Toko sedang tutup karena admin sedang offline.', 'error');
         return;
       }
 
@@ -395,7 +384,10 @@
 
     async function proceedToPayment() {
       currentEmail = document.getElementById('m-email').value.trim();
-      if (!currentEmail || !currentEmail.includes('@')) return alert('Email tidak valid!');
+      if (!currentEmail || !currentEmail.includes('@')) {
+        showToast('Harap masukkan alamat email yang valid!', 'error');
+        return;
+      }
 
       currentOrderId = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
       const newOrder = {
@@ -418,6 +410,7 @@
       document.getElementById('qris-order-id').innerText = currentOrderId;
       document.getElementById('qris-total-amount').innerText = 'Rp ' + currentPrice.toLocaleString('id-ID');
 
+      showToast('Tagihan berhasil dibuat. Silakan scan QRIS.', 'info');
       startRealtimeListener(currentOrderId);
     }
 
@@ -443,7 +436,10 @@
     }
 
     async function submitProof() {
-      if (!base64Proof) return alert('Silakan pilih foto bukti transfer!');
+      if (!base64Proof) {
+        showToast('Silakan pilih foto bukti transfer terlebih dahulu!', 'error');
+        return;
+      }
 
       const btn = document.getElementById('btn-submit-proof');
       btn.innerText = 'Mengunggah...';
@@ -456,6 +452,7 @@
 
       hideAllPhases();
       document.getElementById('phase-waiting').classList.remove('hidden');
+      showToast('Bukti transfer berhasil dikirim ke admin.', 'success');
       lucide.createIcons();
     }
 
@@ -470,11 +467,14 @@
             hideAllPhases();
             document.getElementById('phase-success').classList.remove('hidden');
             document.getElementById('success-email-display').innerText = currentEmail;
+            showToast('Pembayaran telah terverifikasi!', 'success');
             lucide.createIcons();
           }
         } catch (e) {}
       }, 1500);
     }
+
+    loadCatalogProducts();
   </script>
 </body>
 </html>
