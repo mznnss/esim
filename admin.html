@@ -12,81 +12,40 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>body { font-family: 'Plus Jakarta Sans', sans-serif; }</style>
 </head>
-<body class="bg-slate-100 p-4 sm:p-8 min-h-screen text-slate-800 relative">
+<body class="bg-slate-100 min-h-screen text-slate-800 relative">
 
   <!-- TOAST CONTAINER -->
   <div id="toast-container" class="fixed top-5 right-5 z-[999] flex flex-col gap-2 max-w-xs w-full pointer-events-none"></div>
 
-  <!-- CONFIRMATION MODAL -->
-  <div id="confirm-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl text-center">
-      <div class="w-12 h-12 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-3">
-        <i data-lucide="trash-2" class="w-6 h-6"></i>
+  <!-- SCREEN 1: PANEL LOGIN (MUNCUL JIKA BELUM LOGIN) -->
+  <div id="login-screen" class="fixed inset-0 z-50 bg-slate-900 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-8 shadow-2xl text-center">
+      <div class="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-500/30">
+        <i data-lucide="lock" class="w-6 h-6"></i>
       </div>
-      <h3 id="confirm-title" class="text-base font-bold text-slate-900 mb-1">Konfirmasi Tindakan</h3>
-      <p id="confirm-msg" class="text-xs text-slate-500 mb-5">Apakah Anda yakin ingin melanjutkan tindakan ini?</p>
-      
-      <div class="flex gap-2">
-        <button onclick="closeConfirmModal(false)" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl text-xs transition">
-          Batal
+      <h2 class="text-xl font-black text-slate-900 mb-1">Login Admin eSIMGo</h2>
+      <p class="text-xs text-slate-400 mb-6">Masukkan kredensial pengelola untuk mengakses dashboard.</p>
+
+      <form onsubmit="handleLogin(event)" class="space-y-3.5 text-left text-xs">
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Username</label>
+          <input type="text" id="login-user" required placeholder="admin" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-800 font-medium" />
+        </div>
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">PIN / Password</label>
+          <input type="password" id="login-pass" required placeholder="••••••••" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-800 font-medium" />
+        </div>
+        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition text-xs shadow-md shadow-indigo-600/20 mt-2">
+          Masuk Dashboard
         </button>
-        <button id="btn-confirm-action" class="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-sm">
-          Ya, Lanjutkan
-        </button>
-      </div>
+      </form>
     </div>
   </div>
 
-  <!-- MODAL KIRIM EMAIL & ATTACHMENT QR/PDF -->
-  <div id="send-email-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative">
-      <button onclick="closeSendEmailModal()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-600">
-        <i data-lucide="x" class="w-5 h-5"></i>
-      </button>
-
-      <div class="flex items-center gap-2 mb-2">
-        <span class="bg-indigo-100 text-indigo-600 p-2 rounded-xl"><i data-lucide="send" class="w-4 h-4"></i></span>
-        <h3 class="text-base font-bold text-slate-900">Kirim Profil eSIM ke Pembeli</h3>
-      </div>
-      <p class="text-xs text-slate-500 mb-4">Upload gambar QR code atau file PDF profil eSIM yang akan dikirim ke email pembeli.</p>
-      
-      <div class="space-y-3.5 text-xs">
-        <div>
-          <label class="block font-bold text-slate-700 mb-1">Email Penerima</label>
-          <input type="text" id="email-modal-target" readonly class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-600 font-medium" />
-        </div>
-
-        <div>
-          <label class="block font-bold text-slate-700 mb-1">Paket yang Dibeli</label>
-          <input type="text" id="email-modal-package" readonly class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-600 font-medium" />
-        </div>
-
-        <div>
-          <label class="block font-bold text-slate-700 mb-1">Upload File QR Code / PDF eSIM (Opsional tapi disarankan)</label>
-          <div class="border-2 border-dashed border-slate-200 rounded-2xl p-4 text-center hover:border-indigo-400 transition bg-slate-50 cursor-pointer" onclick="document.getElementById('esim-file-input').click()">
-            <i data-lucide="file-up" class="w-7 h-7 text-slate-400 mx-auto mb-1.5"></i>
-            <span id="esim-file-name" class="text-xs font-semibold text-slate-700 block">Pilih Gambar QR (PNG/JPG) atau PDF</span>
-            <span class="text-[10px] text-slate-400">File akan otomatis dilampirkan ke email</span>
-            <input type="file" id="esim-file-input" accept="image/*,.pdf" class="hidden" onchange="previewEsimFile()" />
-          </div>
-          <img id="esim-image-preview" src="" class="hidden w-28 h-28 object-contain mx-auto mt-2 rounded-xl border border-slate-200 shadow-sm" />
-        </div>
-
-        <div>
-          <label class="block font-bold text-slate-700 mb-1">Catatan Tambahan (Opsional)</label>
-          <input type="text" id="email-modal-notes" placeholder="Contoh: SM-DP+ Address: rsp.truphone.com..." class="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-800 outline-none focus:ring-2 focus:ring-indigo-600" />
-        </div>
-
-        <button id="btn-execute-send-email" onclick="executeSendEmailWithAttachment()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition text-xs flex items-center justify-center gap-2 shadow-sm">
-          <i data-lucide="mail-check" class="w-4 h-4"></i> Kirim Email Sekarang
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <div class="max-w-7xl mx-auto space-y-8">
+  <!-- SCREEN 2: DASHBOARD UTAMA (TERBUKA SETELAH LOGIN) -->
+  <div id="main-dashboard" class="hidden p-4 sm:p-8 max-w-7xl mx-auto space-y-8">
     
-    <!-- HEADER DENGAN SAKLAR BUKA/TUTUP TOKO -->
+    <!-- HEADER -->
     <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
       <div class="flex items-center gap-3">
         <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-violet-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
@@ -99,18 +58,21 @@
         </div>
         <div>
           <h1 class="text-2xl font-black text-slate-900 leading-tight">Dashboard Pengelola eSIM</h1>
-          <p class="text-xs text-slate-500">Kelola katalog, terima notifikasi Telegram, dan kirim profil eSIM.</p>
+          <p class="text-xs text-slate-500">Terhubung langsung dengan Bot Notifikasi Telegram.</p>
         </div>
       </div>
 
-      <!-- SAKLAR TOKO MANUAL -->
-      <div class="flex items-center gap-3 bg-slate-50 border border-slate-200 p-2 rounded-2xl">
-        <div class="text-right">
-          <span class="text-[10px] uppercase font-bold text-slate-400 block leading-none">Status Toko</span>
-          <span id="store-status-text" class="text-xs font-black text-emerald-600">Buka (24 Jam)</span>
+      <div class="flex items-center gap-3">
+        <!-- SAKLAR TOKO 24 JAM -->
+        <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 p-1.5 rounded-2xl">
+          <button id="btn-toggle-store" onclick="toggleStoreStatus()" class="px-3.5 py-1.5 rounded-xl text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 transition flex items-center gap-1.5 shadow-sm">
+            <i data-lucide="power" class="w-3.5 h-3.5"></i> <span id="store-status-text">Toko Buka (24 Jam)</span>
+          </button>
         </div>
-        <button id="btn-toggle-store" onclick="toggleStoreStatus()" class="px-4 py-2 rounded-xl text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 transition flex items-center gap-1.5 shadow-sm">
-          <i data-lucide="power" class="w-3.5 h-3.5"></i> <span>Toko Buka</span>
+
+        <!-- TOMBOL LOGOUT -->
+        <button onclick="handleLogout()" class="px-3.5 py-2 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 transition flex items-center gap-1 border border-rose-200">
+          <i data-lucide="log-out" class="w-3.5 h-3.5"></i> Keluar
         </button>
       </div>
     </div>
@@ -137,7 +99,7 @@
               <th class="p-3">Kuota Data</th>
               <th class="p-3">Masa Aktif</th>
               <th class="p-3">Harga Normal</th>
-              <th class="p-3">Harga Promo (Diskon)</th>
+              <th class="p-3">Harga Promo</th>
               <th class="p-3 text-center">Aksi</th>
             </tr>
           </thead>
@@ -177,6 +139,52 @@
       </div>
     </div>
 
+  </div>
+
+  <!-- MODAL KIRIM EMAIL & ATTACHMENT QR/PDF -->
+  <div id="send-email-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative">
+      <button onclick="closeSendEmailModal()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-600">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <div class="flex items-center gap-2 mb-2">
+        <span class="bg-indigo-100 text-indigo-600 p-2 rounded-xl"><i data-lucide="send" class="w-4 h-4"></i></span>
+        <h3 class="text-base font-bold text-slate-900">Kirim Profil eSIM ke Pembeli</h3>
+      </div>
+      <p class="text-xs text-slate-500 mb-4">Upload gambar QR code atau file PDF profil eSIM.</p>
+      
+      <div class="space-y-3.5 text-xs">
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Email Penerima</label>
+          <input type="text" id="email-modal-target" readonly class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-600 font-medium" />
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Paket yang Dibeli</label>
+          <input type="text" id="email-modal-package" readonly class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-600 font-medium" />
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Upload File QR Code / PDF eSIM</label>
+          <div class="border-2 border-dashed border-slate-200 rounded-2xl p-4 text-center hover:border-indigo-400 transition bg-slate-50 cursor-pointer" onclick="document.getElementById('esim-file-input').click()">
+            <i data-lucide="file-up" class="w-7 h-7 text-slate-400 mx-auto mb-1.5"></i>
+            <span id="esim-file-name" class="text-xs font-semibold text-slate-700 block">Pilih Gambar QR atau PDF</span>
+            <input type="file" id="esim-file-input" accept="image/*,.pdf" class="hidden" onchange="previewEsimFile()" />
+          </div>
+          <img id="esim-image-preview" src="" class="hidden w-28 h-28 object-contain mx-auto mt-2 rounded-xl border border-slate-200 shadow-sm" />
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Catatan Tambahan (Opsional)</label>
+          <input type="text" id="email-modal-notes" placeholder="Contoh: SM-DP+ Address: rsp.truphone.com..." class="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-800 outline-none focus:ring-2 focus:ring-indigo-600" />
+        </div>
+
+        <button id="btn-execute-send-email" onclick="executeSendEmailWithAttachment()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition text-xs flex items-center justify-center gap-2 shadow-sm">
+          <i data-lucide="mail-check" class="w-4 h-4"></i> Kirim Email Sekarang
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- MODAL EDIT / TAMBAH PRODUK -->
@@ -256,16 +264,56 @@
   <script>
     lucide.createIcons();
 
+    // ==================== PENGATURAN KREDENSIAL LOGIN ADMIN ====================
+    const ADMIN_AUTH = {
+      user: "admin",
+      pass: "esim123"
+    };
+
     const FIREBASE_DB_URL = "https://esim-store-d7580-default-rtdb.europe-west1.firebasedatabase.app";
 
     let currentOrders = [];
     let currentProducts = {};
     let isStoreOpen = true;
-    let pendingConfirmAction = null;
     let activeSendEmailOrder = null;
     let selectedEsimFileBase64 = null;
 
-    // Toast UI System
+    // OTENTIKASI STATUS LOGIN
+    function checkAuth() {
+      const isLogged = sessionStorage.getItem('admin_logged_in');
+      if (isLogged === 'true') {
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('main-dashboard').classList.remove('hidden');
+        loadStoreStatus();
+        loadProducts();
+        loadOrders();
+      } else {
+        document.getElementById('login-screen').classList.remove('hidden');
+        document.getElementById('main-dashboard').classList.add('hidden');
+      }
+    }
+
+    function handleLogin(e) {
+      e.preventDefault();
+      const u = document.getElementById('login-user').value.trim();
+      const p = document.getElementById('login-pass').value.trim();
+
+      if (u === ADMIN_AUTH.user && p === ADMIN_AUTH.pass) {
+        sessionStorage.setItem('admin_logged_in', 'true');
+        checkAuth();
+        showToast('Login berhasil!', 'success');
+      } else {
+        showToast('Username atau PIN salah!', 'error');
+      }
+    }
+
+    function handleLogout() {
+      sessionStorage.removeItem('admin_logged_in');
+      checkAuth();
+      showToast('Telah keluar dari akun admin.', 'info');
+    }
+
+    // TOAST SYSTEM
     function showToast(message, type = 'info') {
       const container = document.getElementById('toast-container');
       const toast = document.createElement('div');
@@ -298,38 +346,11 @@
       }, 3500);
     }
 
-    function openConfirmModal(title, msg, onConfirm) {
-      document.getElementById('confirm-title').innerText = title;
-      document.getElementById('confirm-msg').innerText = msg;
-      pendingConfirmAction = onConfirm;
-
-      const modal = document.getElementById('confirm-modal');
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-      lucide.createIcons();
-    }
-
-    function closeConfirmModal(execute = false) {
-      const modal = document.getElementById('confirm-modal');
-      modal.classList.add('hidden');
-      modal.classList.remove('flex');
-      if (execute && typeof pendingConfirmAction === 'function') {
-        pendingConfirmAction();
-      }
-      pendingConfirmAction = null;
-    }
-
-    document.getElementById('btn-confirm-action').addEventListener('click', () => {
-      closeConfirmModal(true);
-    });
-
-    // ==================== SAKLAR STATUS TOKO ====================
+    // SAKLAR TOKO
     async function loadStoreStatus() {
       try {
         const res = await fetch(`${FIREBASE_DB_URL}/store_settings/is_open.json`);
         const status = await res.json();
-        
-        // Default selalu true jika belum pernah disetel
         isStoreOpen = (status !== null) ? status : true;
         renderStoreStatusUI();
       } catch (err) {}
@@ -340,14 +361,12 @@
       const btn = document.getElementById('btn-toggle-store');
 
       if (isStoreOpen) {
-        text.innerText = "Buka (24 Jam)";
-        text.className = "text-xs font-black text-emerald-600";
-        btn.className = "px-4 py-2 rounded-xl text-xs font-extrabold text-white bg-rose-600 hover:bg-rose-700 transition flex items-center gap-1.5 shadow-sm";
+        text.innerText = "Toko Buka (24 Jam)";
+        btn.className = "px-3.5 py-1.5 rounded-xl text-xs font-extrabold text-white bg-rose-600 hover:bg-rose-700 transition flex items-center gap-1.5 shadow-sm";
         btn.innerHTML = `<i data-lucide="power" class="w-3.5 h-3.5"></i> <span>Tutup Toko</span>`;
       } else {
-        text.innerText = "Tutup Manual";
-        text.className = "text-xs font-black text-rose-600";
-        btn.className = "px-4 py-2 rounded-xl text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 transition flex items-center gap-1.5 shadow-sm";
+        text.innerText = "Toko Tutup";
+        btn.className = "px-3.5 py-1.5 rounded-xl text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 transition flex items-center gap-1.5 shadow-sm";
         btn.innerHTML = `<i data-lucide="power" class="w-3.5 h-3.5"></i> <span>Buka Toko</span>`;
       }
       lucide.createIcons();
@@ -362,10 +381,10 @@
         body: JSON.stringify(isStoreOpen)
       });
 
-      showToast(isStoreOpen ? 'Toko berhasil DIBUKA! Pembeli bisa order 24 jam.' : 'Toko DITUTUP sementara.', isStoreOpen ? 'success' : 'info');
+      showToast(isStoreOpen ? 'Toko DIBUKA.' : 'Toko DITUTUP.', isStoreOpen ? 'success' : 'info');
     }
 
-    // ==================== PRODUK LAYANAN ====================
+    // PRODUK
     async function loadProducts() {
       try {
         const res = await fetch(`${FIREBASE_DB_URL}/products.json`);
@@ -373,10 +392,7 @@
         const tbody = document.getElementById('products-table-body');
         tbody.innerHTML = '';
 
-        if (Object.keys(currentProducts).length === 0) {
-          await initializeDefaultProducts();
-          return;
-        }
+        if (Object.keys(currentProducts).length === 0) return;
 
         Object.keys(currentProducts).forEach(key => {
           const p = currentProducts[key];
@@ -393,23 +409,13 @@
               <td class="p-3 font-bold text-emerald-600">Rp ${Number(p.price).toLocaleString('id-ID')}</td>
               <td class="p-3 text-center space-x-2">
                 <button onclick="editProduct('${key}')" class="text-indigo-600 hover:text-indigo-800 text-xs font-bold">Edit</button>
-                <button onclick="confirmDeleteProduct('${key}')" class="text-rose-600 hover:text-rose-800 text-xs font-bold">Hapus</button>
+                <button onclick="deleteProduct('${key}')" class="text-rose-600 hover:text-rose-800 text-xs font-bold">Hapus</button>
               </td>
             </tr>
           `;
         });
         lucide.createIcons();
-      } catch (e) { console.error(e); }
-    }
-
-    async function initializeDefaultProducts() {
-      const defaults = {
-        "p1": { flag: "🇯🇵", name: "Jepang (Japan)", network: "Softbank / Docomo 5G", quota: "10 GB High Speed", duration: "7 Hari", original_price: 210000, price: 145000, badge: "Diskon 30%" },
-        "p2": { flag: "🇸🇬", name: "Singapura", network: "Singtel 5G", quota: "Unlimited (FUP 2GB/hr)", duration: "5 Hari", original_price: 120000, price: 85000, badge: "Hemat 30%" },
-        "p3": { flag: "🇪🇺", name: "Eropa (33 Negara)", network: "Vodafone Multi-Carrier", quota: "20 GB Total", duration: "30 Hari", original_price: 450000, price: 320000, badge: "Super Sale" }
-      };
-      await fetch(`${FIREBASE_DB_URL}/products.json`, { method: 'PUT', body: JSON.stringify(defaults) });
-      loadProducts();
+      } catch (e) {}
     }
 
     function openProductModal() {
@@ -470,23 +476,19 @@
       });
 
       closeProductModal();
-      showToast('Paket layanan berhasil disimpan.', 'success');
+      showToast('Paket layanan tersimpan.', 'success');
       loadProducts();
     }
 
-    function confirmDeleteProduct(id) {
-      openConfirmModal(
-        'Hapus Layanan?',
-        'Paket ini akan langsung hilang dari katalog pembeli.',
-        async () => {
-          await fetch(`${FIREBASE_DB_URL}/products/${id}.json`, { method: 'DELETE' });
-          showToast('Paket berhasil dihapus.', 'info');
-          loadProducts();
-        }
-      );
+    async function deleteProduct(id) {
+      if (confirm('Hapus paket ini dari katalog?')) {
+        await fetch(`${FIREBASE_DB_URL}/products/${id}.json`, { method: 'DELETE' });
+        showToast('Paket berhasil dihapus.', 'info');
+        loadProducts();
+      }
     }
 
-    // ==================== PESANAN MASUK ====================
+    // PESANAN MASUK
     async function loadOrders() {
       try {
         const res = await fetch(`${FIREBASE_DB_URL}/orders.json`);
@@ -534,7 +536,7 @@
                       <i data-lucide="qr-code" class="w-3.5 h-3.5"></i> Kirim QR / PDF
                      </button>`
                 }
-                <button onclick="confirmDeleteOrder('${o.order_id}')" class="text-rose-500 hover:text-rose-700 text-xs font-bold px-2 py-1">
+                <button onclick="deleteOrder('${o.order_id}')" class="text-rose-500 hover:text-rose-700 text-xs font-bold px-2 py-1">
                   Hapus
                 </button>
               </td>
@@ -542,7 +544,7 @@
           `;
         });
         lucide.createIcons();
-      } catch (err) { console.error(err); }
+      } catch (err) {}
     }
 
     async function verifyOrder(orderId) {
@@ -550,42 +552,37 @@
         method: 'PUT',
         body: JSON.stringify('PAID')
       });
-      showToast(`Transaksi ${orderId} telah diverifikasi lunas!`, 'success');
+      showToast(`Pesanan ${orderId} telah diverifikasi!`, 'success');
       loadOrders();
     }
 
-    function confirmDeleteOrder(orderId) {
-      openConfirmModal(
-        'Hapus Transaksi?',
-        `Data transaksi ${orderId} akan dihapus permanen dari server.`,
-        async () => {
-          await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, { method: 'DELETE' });
-          showToast(`Transaksi ${orderId} berhasil dihapus.`, 'info');
-          loadOrders();
-        }
-      );
+    async function deleteOrder(orderId) {
+      if (confirm(`Hapus transaksi ${orderId}?`)) {
+        await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, { method: 'DELETE' });
+        showToast('Transaksi dihapus.', 'info');
+        loadOrders();
+      }
     }
 
+    // MODAL KIRIM EMAIL
     function openSendEmailModal(email, orderId, packageName) {
       activeSendEmailOrder = { email, orderId, packageName };
       document.getElementById('email-modal-target').value = email;
       document.getElementById('email-modal-package').value = packageName;
       document.getElementById('email-modal-notes').value = '';
-      document.getElementById('esim-file-name').innerText = "Pilih Gambar QR (PNG/JPG) atau PDF";
+      document.getElementById('esim-file-name').innerText = "Pilih Gambar QR atau PDF";
       document.getElementById('esim-file-input').value = "";
       document.getElementById('esim-image-preview').classList.add('hidden');
       selectedEsimFileBase64 = null;
 
-      const modal = document.getElementById('send-email-modal');
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
+      document.getElementById('send-email-modal').classList.remove('hidden');
+      document.getElementById('send-email-modal').classList.add('flex');
       lucide.createIcons();
     }
 
     function closeSendEmailModal() {
-      const modal = document.getElementById('send-email-modal');
-      modal.classList.add('hidden');
-      modal.classList.remove('flex');
+      document.getElementById('send-email-modal').classList.add('hidden');
+      document.getElementById('send-email-modal').classList.remove('flex');
     }
 
     function previewEsimFile() {
@@ -612,7 +609,7 @@
 
       const btn = document.getElementById('btn-execute-send-email');
       const originalText = btn.innerHTML;
-      btn.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Mengirim Email & Lampiran...`;
+      btn.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Mengirim...`;
       btn.disabled = true;
 
       const customNotes = document.getElementById('email-modal-notes').value.trim();
@@ -633,13 +630,13 @@
         const data = await res.json();
 
         if (res.ok && data.success) {
-          showToast(`QR/PDF eSIM berhasil terkirim ke ${activeSendEmailOrder.email}!`, 'success');
+          showToast(`QR/PDF eSIM berhasil dikirim ke ${activeSendEmailOrder.email}!`, 'success');
           closeSendEmailModal();
         } else {
           showToast(data.error || 'Gagal mengirim email', 'error');
         }
       } catch (err) {
-        showToast('Terjadi kesalahan koneksi saat mengirim email', 'error');
+        showToast('Koneksi gagal saat kirim email', 'error');
       } finally {
         btn.innerHTML = originalText;
         btn.disabled = false;
@@ -659,10 +656,12 @@
       document.getElementById('image-modal').classList.remove('flex');
     }
 
-    loadStoreStatus();
-    loadProducts();
-    loadOrders();
-    setInterval(loadOrders, 4000);
+    checkAuth();
+    setInterval(() => {
+      if (sessionStorage.getItem('admin_logged_in') === 'true') {
+        loadOrders();
+      }
+    }, 4000);
   </script>
 </body>
 </html>
