@@ -44,10 +44,18 @@
         </div>
       </div>
 
-      <!-- BADGE STATUS ADMIN REAL-TIME -->
-      <div id="admin-status-badge" class="flex items-center gap-2 px-3.5 py-1.5 rounded-full border bg-slate-100 text-slate-500 border-slate-200 transition-all duration-300">
-        <span id="status-dot" class="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
-        <span id="status-text" class="text-xs font-bold">Mengecek Status...</span>
+      <!-- MENU KANAN: STATUS ONLINE & TOMBOL RIWAYAT -->
+      <div class="flex items-center gap-2.5">
+        <button onclick="openHistoryModal()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition shadow-sm">
+          <i data-lucide="receipt" class="w-4 h-4 text-indigo-600"></i>
+          <span class="hidden sm:inline">Riwayat Pesanan</span>
+          <span id="history-badge" class="hidden w-2 h-2 rounded-full bg-indigo-600"></span>
+        </button>
+
+        <div id="admin-status-badge" class="flex items-center gap-2 px-3 py-1.5 rounded-full border bg-slate-100 text-slate-500 border-slate-200 transition-all duration-300">
+          <span id="status-dot" class="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
+          <span id="status-text" class="text-xs font-bold">Mengecek Status...</span>
+        </div>
       </div>
     </div>
   </nav>
@@ -91,7 +99,7 @@
     <div id="product-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
   </main>
 
-  <!-- MODAL TRANSAKSI -->
+  <!-- MODAL CHECKOUT & PEMBAYARAN -->
   <div id="checkout-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative max-h-[92vh] overflow-y-auto">
       <button onclick="closeModal()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-600">
@@ -183,7 +191,7 @@
         <h3 class="text-lg font-bold text-slate-900 mb-1">Bukti Berhasil Terkirim!</h3>
         <p class="text-xs text-slate-500 mb-4">Admin Rifki Cell sedang memverifikasi saldo pembayaran Anda.</p>
         <div class="text-[11px] bg-slate-50 border border-slate-200 p-3 rounded-xl text-slate-500">
-          Tetap di layar ini. Tampilan akan <b>otomatis berganti ke sukses</b> begitu diverifikasi.
+          Tetap di layar ini atau pantau lewat menu <b>Riwayat Pesanan</b>.
         </div>
       </div>
 
@@ -206,6 +214,39 @@
     </div>
   </div>
 
+  <!-- MODAL RIWAYAT PESANAN SAYA -->
+  <div id="history-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl relative max-h-[85vh] flex flex-col">
+      <button onclick="closeHistoryModal()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-600">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <div class="flex items-center gap-2 mb-1">
+        <span class="bg-indigo-100 text-indigo-600 p-2 rounded-xl"><i data-lucide="receipt" class="w-4 h-4"></i></span>
+        <h3 class="text-lg font-bold text-slate-900">Riwayat Pesanan Saya</h3>
+      </div>
+      <p class="text-xs text-slate-500 mb-4">Daftar transaksi pembelian eSIM yang Anda buat di perangkat ini.</p>
+
+      <!-- Pencarian Riwayat via Email -->
+      <div class="flex gap-2 mb-4">
+        <input 
+          type="text" 
+          id="history-search-input" 
+          placeholder="Cari berdasarkan Email / Order ID..." 
+          class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs outline-none focus:ring-2 focus:ring-indigo-600 font-medium"
+        />
+        <button onclick="searchOrdersByQuery()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-sm flex items-center gap-1">
+          <i data-lucide="search" class="w-3.5 h-3.5"></i> Cari
+        </button>
+      </div>
+
+      <!-- List Pesanan -->
+      <div id="history-list" class="space-y-3 overflow-y-auto flex-grow pr-1">
+        <!-- Item riwayat dirender dinamis di sini -->
+      </div>
+    </div>
+  </div>
+
   <footer class="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-400">
     &copy; 2026 eSIMGo • Rifki Cell.
   </footer>
@@ -224,6 +265,7 @@
     let pollInterval = null;
 
     const modal = document.getElementById('checkout-modal');
+    const historyModal = document.getElementById('history-modal');
 
     // UI Custom Toast System
     function showToast(message, type = 'info') {
@@ -258,6 +300,131 @@
       }, 3500);
     }
 
+    // ==================== FITUR RIWAYAT PESANAN PEMBELI ====================
+    function saveOrderToLocalStorage(orderId) {
+      let saved = JSON.parse(localStorage.getItem('my_esim_orders') || '[]');
+      if (!saved.includes(orderId)) {
+        saved.unshift(orderId);
+        localStorage.setItem('my_esim_orders', JSON.stringify(saved));
+      }
+      updateHistoryBadge();
+    }
+
+    function updateHistoryBadge() {
+      const saved = JSON.parse(localStorage.getItem('my_esim_orders') || '[]');
+      const badge = document.getElementById('history-badge');
+      if (saved.length > 0) {
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
+
+    async function openHistoryModal() {
+      historyModal.classList.remove('hidden');
+      historyModal.classList.add('flex');
+      loadMyOrders();
+    }
+
+    function closeHistoryModal() {
+      historyModal.classList.add('hidden');
+      historyModal.classList.remove('flex');
+    }
+
+    async function loadMyOrders() {
+      const listContainer = document.getElementById('history-list');
+      listContainer.innerHTML = `<div class="text-center py-8 text-xs text-slate-400"><i data-lucide="loader" class="w-5 h-5 animate-spin mx-auto mb-2 text-indigo-600"></i>Memuat riwayat...</div>`;
+      lucide.createIcons();
+
+      const savedOrderIds = JSON.parse(localStorage.getItem('my_esim_orders') || '[]');
+
+      try {
+        const res = await fetch(`${FIREBASE_DB_URL}/orders.json`);
+        const allOrders = await res.json() || {};
+        
+        // Filter pesanan milik perangkat ini
+        const myOrders = savedOrderIds
+          .map(id => allOrders[id])
+          .filter(Boolean);
+
+        renderHistoryItems(myOrders);
+      } catch (err) {
+        listContainer.innerHTML = `<div class="text-center py-8 text-xs text-rose-500">Gagal memuat riwayat.</div>`;
+      }
+    }
+
+    async function searchOrdersByQuery() {
+      const query = document.getElementById('history-search-input').value.trim().toLowerCase();
+      if (!query) return loadMyOrders();
+
+      const listContainer = document.getElementById('history-list');
+      listContainer.innerHTML = `<div class="text-center py-8 text-xs text-slate-400"><i data-lucide="loader" class="w-5 h-5 animate-spin mx-auto mb-2 text-indigo-600"></i>Mencari pesanan...</div>`;
+      lucide.createIcons();
+
+      try {
+        const res = await fetch(`${FIREBASE_DB_URL}/orders.json`);
+        const allOrders = await res.json() || {};
+        
+        const matched = Object.values(allOrders).filter(o => 
+          (o.email && o.email.toLowerCase().includes(query)) ||
+          (o.order_id && o.order_id.toLowerCase().includes(query))
+        );
+
+        renderHistoryItems(matched);
+      } catch (err) {
+        listContainer.innerHTML = `<div class="text-center py-8 text-xs text-rose-500">Gagal mencari pesanan.</div>`;
+      }
+    }
+
+    function renderHistoryItems(orders) {
+      const listContainer = document.getElementById('history-list');
+      listContainer.innerHTML = '';
+
+      if (orders.length === 0) {
+        listContainer.innerHTML = `
+          <div class="text-center py-10 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+            <i data-lucide="receipt-text" class="w-8 h-8 text-slate-300 mx-auto mb-2"></i>
+            <p class="text-xs font-semibold text-slate-600">Belum ada riwayat pesanan</p>
+            <p class="text-[10px] text-slate-400 mt-0.5">Pesanan Anda akan tercatat otomatis di sini.</p>
+          </div>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      orders.forEach(o => {
+        const isPaid = o.status === 'PAID';
+        listContainer.innerHTML += `
+          <div class="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm hover:border-indigo-200 transition">
+            <div class="flex justify-between items-start mb-2">
+              <div>
+                <span class="text-[10px] font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">${o.order_id}</span>
+                <h4 class="font-bold text-xs text-slate-800 mt-1">${o.package_name}</h4>
+              </div>
+              <span class="px-2.5 py-1 text-[10px] font-bold rounded-full ${isPaid ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">
+                ${isPaid ? 'LUNAS (PROFIL DIKIRIM)' : 'MENUNGGU VERIFIKASI'}
+              </span>
+            </div>
+
+            <div class="flex justify-between items-center text-[11px] text-slate-500 border-t border-slate-100 pt-2.5 mt-2">
+              <div>
+                <span>Nominal: </span><b class="text-slate-800 font-bold">Rp ${Number(o.price).toLocaleString('id-ID')}</b>
+              </div>
+              <div>
+                <span>Waktu: </span><span class="text-slate-400 font-medium">${o.created_at}</span>
+              </div>
+            </div>
+
+            <div class="mt-2 text-[10px] text-slate-400 truncate">
+              Email: <span class="text-slate-600 font-medium">${o.email}</span>
+            </div>
+          </div>
+        `;
+      });
+      lucide.createIcons();
+    }
+
+    // ==================== KATALOG & STATUS ONLINE ====================
     async function loadCatalogProducts() {
       try {
         const res = await fetch(`${FIREBASE_DB_URL}/products.json`);
@@ -437,6 +604,9 @@
         body: JSON.stringify(newOrder)
       });
 
+      // Simpan ke riwayat lokal perangkat pembeli
+      saveOrderToLocalStorage(currentOrderId);
+
       hideAllPhases();
       document.getElementById('phase-qris').classList.remove('hidden');
       document.getElementById('qris-order-id').innerText = currentOrderId;
@@ -506,6 +676,7 @@
       }, 1500);
     }
 
+    updateHistoryBadge();
     loadCatalogProducts();
   </script>
 </body>
