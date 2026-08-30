@@ -14,7 +14,7 @@
   <!-- TOAST CONTAINER -->
   <div id="toast-container" class="fixed top-5 right-5 z-[999] flex flex-col gap-2 max-w-xs w-full pointer-events-none"></div>
 
-  <!-- CUSTOM CONFIRMATION MODAL -->
+  <!-- CONFIRMATION MODAL -->
   <div id="confirm-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl text-center">
       <div class="w-12 h-12 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-3">
@@ -43,7 +43,7 @@
           <span class="bg-indigo-600 text-white p-2 rounded-xl"><i data-lucide="shield-check" class="w-5 h-5"></i></span>
           <h1 class="text-2xl font-black text-slate-900">Dashboard Pengelola eSIM</h1>
         </div>
-        <p class="text-xs text-slate-500 mt-1">Kelola katalog layanan, pantau bukti pembayaran, dan kirim profil eSIM.</p>
+        <p class="text-xs text-slate-500 mt-1">Kelola katalog layanan, harga diskon, pantau pembayaran, dan kirim profil eSIM.</p>
       </div>
 
       <div class="flex items-center gap-3">
@@ -59,7 +59,7 @@
       <div class="flex justify-between items-center mb-6">
         <div>
           <h2 class="text-lg font-bold text-slate-900">Manajemen Paket Layanan</h2>
-          <p class="text-xs text-slate-500">Tambah atau ubah paket yang tampil di halaman utama pembeli</p>
+          <p class="text-xs text-slate-500">Atur harga normal, harga promo diskon, dan kuota paket</p>
         </div>
         <button onclick="openProductModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-sm">
           <i data-lucide="plus" class="w-4 h-4"></i> Tambah Layanan Baru
@@ -75,7 +75,8 @@
               <th class="p-3">Operator</th>
               <th class="p-3">Kuota Data</th>
               <th class="p-3">Masa Aktif</th>
-              <th class="p-3">Harga</th>
+              <th class="p-3">Harga Normal</th>
+              <th class="p-3">Harga Promo (Diskon)</th>
               <th class="p-3 text-center">Aksi</th>
             </tr>
           </thead>
@@ -103,7 +104,7 @@
               <th class="p-4">Waktu</th>
               <th class="p-4">Order ID</th>
               <th class="p-4">Paket eSIM</th>
-              <th class="p-4">Nominal</th>
+              <th class="p-4">Nominal Tagihan</th>
               <th class="p-4">Email Pembeli</th>
               <th class="p-4 text-center">Bukti Bayar</th>
               <th class="p-4 text-center">Status</th>
@@ -155,14 +156,20 @@
           </div>
         </div>
 
-        <div>
-          <label class="block font-bold text-slate-700 mb-1">Harga (Angka saja)</label>
-          <input type="number" id="prod-price" placeholder="145000" required class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600" />
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Harga Normal (Coret)</label>
+            <input type="number" id="prod-original-price" placeholder="50000" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600" />
+          </div>
+          <div>
+            <label class="block font-bold text-indigo-700 mb-1">Harga Promo (Bayar)</label>
+            <input type="number" id="prod-price" placeholder="30000" required class="w-full border border-indigo-200 bg-indigo-50/30 rounded-xl px-3 py-2 text-sm font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-600" />
+          </div>
         </div>
 
         <div>
           <label class="block font-bold text-slate-700 mb-1">Label / Badge (Opsional)</label>
-          <input type="text" id="prod-badge" placeholder="Best Seller / Unlimited" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600" />
+          <input type="text" id="prod-badge" placeholder="PROMO SPESIAL / Best Seller" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600" />
         </div>
 
         <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition text-sm mt-4">
@@ -227,7 +234,6 @@
       }, 3500);
     }
 
-    // Custom Confirmation Modal
     function openConfirmModal(title, msg, onConfirm) {
       document.getElementById('confirm-title').innerText = title;
       document.getElementById('confirm-msg').innerText = msg;
@@ -280,6 +286,8 @@
 
         Object.keys(currentProducts).forEach(key => {
           const p = currentProducts[key];
+          const originalPrice = p.original_price ? `Rp ${Number(p.original_price).toLocaleString('id-ID')}` : '-';
+          
           tbody.innerHTML += `
             <tr class="hover:bg-slate-50 transition">
               <td class="p-3 text-2xl">${p.flag}</td>
@@ -287,7 +295,8 @@
               <td class="p-3 text-slate-500">${p.network}</td>
               <td class="p-3 font-semibold">${p.quota}</td>
               <td class="p-3 text-slate-600">${p.duration}</td>
-              <td class="p-3 font-bold text-indigo-600">Rp ${Number(p.price).toLocaleString('id-ID')}</td>
+              <td class="p-3 text-slate-400 line-through text-xs">${originalPrice}</td>
+              <td class="p-3 font-bold text-emerald-600">Rp ${Number(p.price).toLocaleString('id-ID')}</td>
               <td class="p-3 text-center space-x-2">
                 <button onclick="editProduct('${key}')" class="text-indigo-600 hover:text-indigo-800 text-xs font-bold">Edit</button>
                 <button onclick="confirmDeleteProduct('${key}')" class="text-rose-600 hover:text-rose-800 text-xs font-bold">Hapus</button>
@@ -300,9 +309,9 @@
 
     async function initializeDefaultProducts() {
       const defaults = {
-        "p1": { flag: "🇯🇵", name: "Jepang (Japan)", network: "Softbank / Docomo 5G", quota: "10 GB High Speed", duration: "7 Hari", price: 145000, badge: "Best Seller" },
-        "p2": { flag: "🇸🇬", name: "Singapura", network: "Singtel 5G", quota: "Unlimited (FUP 2GB/hr)", duration: "5 Hari", price: 85000, badge: "Unlimited" },
-        "p3": { flag: "🇪🇺", name: "Eropa (33 Negara)", network: "Vodafone Multi-Carrier", quota: "20 GB Total", duration: "30 Hari", price: 320000, badge: "Multi-Negara" }
+        "p1": { flag: "🇯🇵", name: "Jepang (Japan)", network: "Softbank / Docomo 5G", quota: "10 GB High Speed", duration: "7 Hari", original_price: 210000, price: 145000, badge: "Diskon 30%" },
+        "p2": { flag: "🇸🇬", name: "Singapura", network: "Singtel 5G", quota: "Unlimited (FUP 2GB/hr)", duration: "5 Hari", original_price: 120000, price: 85000, badge: "Hemat 30%" },
+        "p3": { flag: "🇪🇺", name: "Eropa (33 Negara)", network: "Vodafone Multi-Carrier", quota: "20 GB Total", duration: "30 Hari", original_price: 450000, price: 320000, badge: "Super Sale" }
       };
       await fetch(`${FIREBASE_DB_URL}/products.json`, { method: 'PUT', body: JSON.stringify(defaults) });
       loadProducts();
@@ -316,6 +325,7 @@
       document.getElementById('prod-network').value = '';
       document.getElementById('prod-quota').value = '';
       document.getElementById('prod-duration').value = '';
+      document.getElementById('prod-original-price').value = '';
       document.getElementById('prod-price').value = '';
       document.getElementById('prod-badge').value = '';
       document.getElementById('product-modal').classList.remove('hidden');
@@ -336,6 +346,7 @@
       document.getElementById('prod-network').value = p.network;
       document.getElementById('prod-quota').value = p.quota;
       document.getElementById('prod-duration').value = p.duration;
+      document.getElementById('prod-original-price').value = p.original_price || '';
       document.getElementById('prod-price').value = p.price;
       document.getElementById('prod-badge').value = p.badge || '';
       document.getElementById('product-modal').classList.remove('hidden');
@@ -345,12 +356,15 @@
     async function saveProduct(e) {
       e.preventDefault();
       const id = document.getElementById('prod-id').value || 'p_' + Date.now();
+      const originalPriceVal = document.getElementById('prod-original-price').value;
+      
       const productData = {
         flag: document.getElementById('prod-flag').value,
         name: document.getElementById('prod-name').value,
         network: document.getElementById('prod-network').value,
         quota: document.getElementById('prod-quota').value,
         duration: document.getElementById('prod-duration').value,
+        original_price: originalPriceVal ? Number(originalPriceVal) : null,
         price: Number(document.getElementById('prod-price').value),
         badge: document.getElementById('prod-badge').value
       };
