@@ -28,7 +28,7 @@
           Batal
         </button>
         <button id="btn-confirm-action" class="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-sm">
-          Ya, Hapus
+          Ya, Lanjutkan
         </button>
       </div>
     </div>
@@ -201,7 +201,7 @@
     let currentProducts = {};
     let pendingConfirmAction = null;
 
-    // Toast UI System
+    // Toast Notification System
     function showToast(message, type = 'info') {
       const container = document.getElementById('toast-container');
       const toast = document.createElement('div');
@@ -259,7 +259,7 @@
       closeConfirmModal(true);
     });
 
-    // Heartbeat
+    // Heartbeat Admin
     async function sendAdminHeartbeat() {
       try {
         await fetch(`${FIREBASE_DB_URL}/admin_heartbeat.json`, {
@@ -435,8 +435,8 @@
                   ? `<button onclick="verifyOrder('${o.order_id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-1.5 rounded-lg transition shadow-sm">
                       Verifikasi Lunas
                      </button>` 
-                  : `<button onclick="openEmailDraft('${o.email}', '${o.order_id}', '${o.package_name}')" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition inline-flex items-center gap-1 shadow-sm">
-                      <i data-lucide="mail" class="w-3.5 h-3.5"></i> Kirim Email eSIM
+                  : `<button onclick="sendAutomatedEmail('${o.email}', '${o.order_id}', '${o.package_name}', this)" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition inline-flex items-center gap-1 shadow-sm">
+                      <i data-lucide="mail" class="w-3.5 h-3.5"></i> Kirim Email Otomatis
                      </button>`
                 }
                 <button onclick="confirmDeleteOrder('${o.order_id}')" class="text-rose-500 hover:text-rose-700 text-xs font-bold px-2 py-1">
@@ -471,34 +471,35 @@
       );
     }
 
-    function openEmailDraft(email, orderId, packageName) {
-      const subject = encodeURIComponent(`[eSIMGo] Profil QR Code eSIM Anda Siap Digunakan - Order #${orderId}`);
-      const body = encodeURIComponent(
-`Halo,
+    // Pengiriman Email Otomatis Menggunakan Resend API
+    async function sendAutomatedEmail(email, orderId, packageName, btnElement) {
+      btnElement.innerText = "Mengirim...";
+      btnElement.disabled = true;
 
-Terima kasih atas pembayaran Anda untuk pesanan eSIM di eSIMGo / Rifki Cell!
+      try {
+        const res = await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, orderId, packageName })
+        });
 
-Detail Pesanan:
-- No. Order: #${orderId}
-- Paket Layanan: ${packageName}
-- Status: SUDAH LUNAS & AKTIF
+        const data = await res.json();
 
-Panduan Pemasangan eSIM:
-1. Hubungkan smartphone Anda ke jaringan Wi-Fi / Internet stabil.
-2. Buka menu Pengaturan HP (Settings) > Seluler (Cellular) / Jaringan Seluler.
-3. Pilih "Tambah Paket Seluler" (Add eSIM).
-4. Scan gambar QR Code profil eSIM yang kami lampirkan di attachment email ini.
-5. Selesaikan konfigurasi profil dan beri nama label (contoh: "eSIM Roaming").
-
-*Catatan Penting: Aktifkan opsi "Data Roaming" pada profil eSIM ini saat Anda telah mendarat di negara tujuan.
-
-(Lampirkan file gambar QR Code profil eSIM pembeli sebelum menekan tombol Kirim)
-
-Salam hangat,
-eSIMGo / Rifki Cell Support`
-      );
-
-      window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
+        if (res.ok && data.success) {
+          showToast(`Email berhasil terkirim ke ${email}!`, 'success');
+          btnElement.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5"></i> Email Terkirim`;
+          btnElement.className = "bg-emerald-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg inline-flex items-center gap-1 cursor-default";
+        } else {
+          showToast(data.error || 'Gagal mengirim email', 'error');
+          btnElement.innerHTML = `<i data-lucide="mail" class="w-3.5 h-3.5"></i> Kirim Ulang`;
+          btnElement.disabled = false;
+        }
+      } catch (err) {
+        showToast('Terjadi kesalahan koneksi saat kirim email', 'error');
+        btnElement.innerHTML = `<i data-lucide="mail" class="w-3.5 h-3.5"></i> Kirim Email`;
+        btnElement.disabled = false;
+      }
+      lucide.createIcons();
     }
 
     function viewImage(index) {
