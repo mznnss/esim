@@ -1,3 +1,5 @@
+import nodemailer from 'nodemailer';
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
@@ -17,13 +19,23 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Email dan Order ID wajib diisi' });
   }
 
-  const apiKey = process.env.RESEND_API_KEY;
+  const user = process.env.GMAIL_USER || 'mizanzulmi1508@gmail.com';
+  const pass = process.env.GMAIL_PASS;
 
-  if (!apiKey) {
-    return res.status(500).json({ error: 'RESEND_API_KEY belum disetel di Vercel' });
+  if (!pass) {
+    return res.status(500).json({ error: 'GMAIL_PASS belum disetel di Environment Variables Vercel' });
   }
 
-  // Siapkan lampiran jika admin mengupload file QR/PDF
+  // Konfigurasi SMTP Gmail
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: user,
+      pass: pass
+    }
+  });
+
+  // Siapkan lampiran QR Code / PDF jika ada
   const attachments = [];
   if (qrCodeBase64) {
     const isPdf = qrCodeBase64.startsWith('data:application/pdf');
@@ -32,84 +44,60 @@ export default async function handler(req, res) {
 
     attachments.push({
       filename: filename,
-      content: cleanBase64
+      content: Buffer.from(cleanBase64, 'base64')
     });
   }
 
-  try {
-    const payload = {
-      from: 'eSIMGo Official <onboarding@resend.dev>',
-      to: [email],
-      subject: `[eSIMGo] Profil QR Code eSIM Anda Siap Digunakan - Order #${orderId}`,
-      html: `
-        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
-          <div style="text-align: center; margin-bottom: 20px;">
-            <h1 style="color: #4f46e5; margin: 0; font-size: 24px;">eSIM<span style="color: #0f172a;">Go</span></h1>
-            <p style="color: #64748b; font-size: 13px; margin-top: 5px;">Konfirmasi Aktivasi & QR Code eSIM Roaming</p>
-          </div>
+  const htmlContent = `
+    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
+      <div style="text-align: center; margin-bottom: 20px;">
+        <h1 style="color: #4f46e5; margin: 0; font-size: 24px;">eSIM<span style="color: #0f172a;">Go</span></h1>
+        <p style="color: #64748b; font-size: 13px; margin-top: 5px;">Konfirmasi Aktivasi & QR Code eSIM Roaming</p>
+      </div>
 
-          <div style="background-color: #f8fafc; border-radius: 12px; padding: 15px; margin-bottom: 20px; font-size: 14px;">
-            <p style="margin: 4px 0;"><b>No. Order:</b> #${orderId}</p>
-            <p style="margin: 4px 0;"><b>Paket Layanan:</b> ${packageName}</p>
-            <p style="margin: 4px 0;"><b>Status Pembayaran:</b> <span style="color: #16a34a; font-weight: bold;">LUNAS</span></p>
-          </div>
+      <div style="background-color: #f8fafc; border-radius: 12px; padding: 15px; margin-bottom: 20px; font-size: 14px;">
+        <p style="margin: 4px 0;"><b>No. Order:</b> #${orderId}</p>
+        <p style="margin: 4px 0;"><b>Paket Layanan:</b> ${packageName}</p>
+        <p style="margin: 4px 0;"><b>Status Pembayaran:</b> <span style="color: #16a34a; font-weight: bold;">LUNAS</span></p>
+      </div>
 
-          ${qrCodeBase64 && !qrCodeBase64.startsWith('data:application/pdf') ? `
-            <div style="text-align: center; margin: 25px 0; background: #faf5ff; padding: 20px; border-radius: 12px; border: 1px dashed #c084fc;">
-              <p style="font-weight: bold; color: #6b21a8; font-size: 14px; margin-top: 0; margin-bottom: 12px;">QR Code Aktivasi eSIM Anda:</p>
-              <img src="${qrCodeBase64}" alt="QR Code eSIM" style="width: 220px; height: 220px; border-radius: 10px; border: 1px solid #e2e8f0; background: #ffffff;" />
-              <p style="font-size: 11px; color: #7e22ce; margin-top: 8px; margin-bottom: 0;">Scan QR di atas menggunakan menu Seluler di pengaturan HP Anda</p>
-            </div>
-          ` : ''}
-
-          ${customNotes ? `
-            <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 12px; margin: 15px 0; font-size: 13px; color: #1e40af;">
-              <b>Catatan dari Admin:</b><br/>${customNotes}
-            </div>
-          ` : ''}
-
-          <h3 style="color: #0f172a; font-size: 16px; margin-bottom: 10px;">Panduan Pemasangan eSIM:</h3>
-          <ol style="color: #334155; font-size: 13px; line-height: 1.6; padding-left: 20px;">
-            <li>Pastikan smartphone Anda terhubung ke jaringan Wi-Fi / Internet yang stabil.</li>
-            <li>Buka menu <b>Pengaturan HP (Settings) &gt; Seluler / Jaringan Seluler</b>.</li>
-            <li>Pilih menu <b>Tambah Paket Seluler (Add eSIM)</b>.</li>
-            <li>Pilih opsi Scan QR Code, lalu arahkan kamera ke barcode eSIM (tertera di email/lampiran file).</li>
-            <li>Selesaikan proses konfigurasi dan beri nama label (misal: <i>eSIM Roaming</i>).</li>
-          </ol>
-
-          <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 12px; margin: 20px 0; font-size: 12px; color: #991b1b;">
-            <b>Perhatian:</b> Harap aktifkan fitur <b>Data Roaming</b> pada profil eSIM ini saat Anda telah mendarat di negara tujuan.
-          </div>
-
-          <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-          <p style="text-align: center; color: #94a3b8; font-size: 11px; margin: 0;">
-            © 2026 eSIMGo • Rifki Cell. Email ini dikirim otomatis oleh sistem.
-          </p>
+      ${customNotes ? `
+        <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 12px; margin: 15px 0; font-size: 13px; color: #1e40af;">
+          <b>Catatan dari Admin:</b><br/>${customNotes}
         </div>
-      `
-    };
+      ` : ''}
 
-    if (attachments.length > 0) {
-      payload.attachments = attachments;
-    }
+      <h3 style="color: #0f172a; font-size: 16px; margin-bottom: 10px;">Panduan Pemasangan eSIM:</h3>
+      <ol style="color: #334155; font-size: 13px; line-height: 1.6; padding-left: 20px;">
+        <li>Pastikan smartphone Anda terhubung ke jaringan Wi-Fi / Internet yang stabil.</li>
+        <li>Buka menu <b>Pengaturan HP (Settings) &gt; Seluler / Jaringan Seluler</b>.</li>
+        <li>Pilih menu <b>Tambah Paket Seluler (Add eSIM)</b>.</li>
+        <li>Scan barcode QR Code yang ada di lampiran email ini.</li>
+        <li>Selesaikan proses aktivasi dan beri label nama profil (misal: <i>eSIM Roaming</i>).</li>
+      </ol>
 
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
+      <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 12px; margin: 20px 0; font-size: 12px; color: #991b1b;">
+        <b>Perhatian:</b> Aktifkan opsi <b>Data Roaming</b> pada profil eSIM ini saat Anda telah mendarat di negara tujuan.
+      </div>
+
+      <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+      <p style="text-align: center; color: #94a3b8; font-size: 11px; margin: 0;">
+        © 2026 eSIMGo • Rifki Cell. Email ini dikirim otomatis oleh sistem.
+      </p>
+    </div>
+  `;
+
+  try {
+    await transporter.sendMail({
+      from: `"eSIMGo Official" <${user}>`,
+      to: email,
+      subject: `[eSIMGo] Profil QR Code eSIM Anda Siap Digunakan - Order #${orderId}`,
+      html: htmlContent,
+      attachments: attachments
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      return res.status(400).json({ error: data.message || 'Gagal mengirim email' });
-    }
-
-    return res.status(200).json({ success: true, data });
+    return res.status(200).json({ success: true, message: 'Email berhasil dikirim via Gmail SMTP' });
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message || 'Gagal mengirim email via Gmail' });
   }
 }
