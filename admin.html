@@ -9,22 +9,19 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    body { font-family: 'Plus Jakarta Sans', sans-serif; }
-  </style>
+  <style>body { font-family: 'Plus Jakarta Sans', sans-serif; }</style>
 </head>
 <body class="bg-slate-100 p-4 sm:p-8 min-h-screen text-slate-800">
 
   <div class="max-w-6xl mx-auto">
     
-    <!-- Top Header -->
     <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
       <div>
         <div class="flex items-center gap-2">
           <span class="bg-indigo-600 text-white p-1.5 rounded-lg"><i data-lucide="shield-check" class="w-4 h-4"></i></span>
           <h1 class="text-2xl font-black text-slate-900">Dashboard Admin eSIM</h1>
         </div>
-        <p class="text-xs text-slate-500 mt-1">Kelola transaksi masuk, periksa bukti struk, dan verifikasi lunas.</p>
+        <p class="text-xs text-slate-500 mt-1">Periksa bukti struk pembayaran dan verifikasi lunas.</p>
       </div>
 
       <button onclick="loadOrders()" class="self-start sm:self-auto bg-slate-900 hover:bg-slate-800 text-white text-xs px-4 py-2.5 rounded-xl font-bold transition flex items-center gap-1.5">
@@ -48,15 +45,13 @@
               <th class="p-4 text-center">Aksi</th>
             </tr>
           </thead>
-          <tbody id="orders-table-body" class="divide-y divide-slate-100 font-medium">
-            <!-- Data baris dirender lewat JavaScript -->
-          </tbody>
+          <tbody id="orders-table-body" class="divide-y divide-slate-100 font-medium"></tbody>
         </table>
       </div>
     </div>
   </div>
 
-  <!-- Modal Preview Bukti Transfer -->
+  <!-- Modal Preview Foto Bukti Transfer -->
   <div id="image-modal" class="fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-sm hidden items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl relative text-center">
       <button onclick="closeImageModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
@@ -76,7 +71,7 @@
 
     async function loadOrders() {
       try {
-        const res = await fetch('http://localhost:3000/api/admin/orders');
+        const res = await fetch('/api/admin');
         currentOrders = await res.json();
         const tbody = document.getElementById('orders-table-body');
         tbody.innerHTML = '';
@@ -140,11 +135,14 @@
     }
 
     async function verifyOrder(orderId) {
-      await fetch(`http://localhost:3000/api/admin/verify/${orderId}`, { method: 'POST' });
+      await fetch('/api/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId })
+      });
       loadOrders();
     }
 
-    // Auto refresh data setiap 3 detik
     setInterval(loadOrders, 3000);
     loadOrders();
   </script>
