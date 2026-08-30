@@ -9,7 +9,30 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>body { font-family: 'Plus Jakarta Sans', sans-serif; }</style>
 </head>
-<body class="bg-slate-100 p-4 sm:p-8 min-h-screen text-slate-800">
+<body class="bg-slate-100 p-4 sm:p-8 min-h-screen text-slate-800 relative">
+
+  <!-- TOAST CONTAINER -->
+  <div id="toast-container" class="fixed top-5 right-5 z-[999] flex flex-col gap-2 max-w-xs w-full pointer-events-none"></div>
+
+  <!-- CUSTOM CONFIRMATION MODAL -->
+  <div id="confirm-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl text-center">
+      <div class="w-12 h-12 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-3">
+        <i data-lucide="trash-2" class="w-6 h-6"></i>
+      </div>
+      <h3 id="confirm-title" class="text-base font-bold text-slate-900 mb-1">Konfirmasi Tindakan</h3>
+      <p id="confirm-msg" class="text-xs text-slate-500 mb-5">Apakah Anda yakin ingin melanjutkan tindakan ini?</p>
+      
+      <div class="flex gap-2">
+        <button onclick="closeConfirmModal(false)" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl text-xs transition">
+          Batal
+        </button>
+        <button id="btn-confirm-action" class="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-sm">
+          Ya, Hapus
+        </button>
+      </div>
+    </div>
+  </div>
 
   <div class="max-w-7xl mx-auto space-y-8">
     
@@ -31,7 +54,7 @@
       </div>
     </div>
 
-    <!-- SEKSI 1: MANAJEMEN LAYANAN / PAKET ESIM -->
+    <!-- SEKSI 1: MANAJEMEN LAYANAN -->
     <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
       <div class="flex justify-between items-center mb-6">
         <div>
@@ -61,7 +84,7 @@
       </div>
     </div>
 
-    <!-- SEKSI 2: TRANSAKSI MASUK & VERIFIKASI -->
+    <!-- SEKSI 2: PESANAN MASUK -->
     <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
       <div class="flex justify-between items-center mb-6">
         <div>
@@ -169,20 +192,80 @@
 
     let currentOrders = [];
     let currentProducts = {};
+    let pendingConfirmAction = null;
 
-    // 1. Heartbeat Online Admin
+    // Toast UI System
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      
+      const colors = {
+        success: 'bg-emerald-50 text-emerald-800 border-emerald-300',
+        error: 'bg-rose-50 text-rose-800 border-rose-300',
+        info: 'bg-indigo-50 text-indigo-800 border-indigo-300'
+      };
+
+      const icons = {
+        success: 'check-circle-2',
+        error: 'alert-circle',
+        info: 'info'
+      };
+
+      toast.className = `flex items-center gap-3 p-4 rounded-2xl border shadow-lg ${colors[type]} pointer-events-auto transform translate-y-[-20px] opacity-0 transition-all duration-300`;
+      toast.innerHTML = `
+        <i data-lucide="${icons[type]}" class="w-5 h-5 flex-shrink-0"></i>
+        <span class="text-xs font-semibold">${message}</span>
+      `;
+
+      container.appendChild(toast);
+      lucide.createIcons();
+
+      setTimeout(() => toast.classList.remove('translate-y-[-20px]', 'opacity-0'), 50);
+      setTimeout(() => {
+        toast.classList.add('translate-y-[-20px]', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    // Custom Confirmation Modal
+    function openConfirmModal(title, msg, onConfirm) {
+      document.getElementById('confirm-title').innerText = title;
+      document.getElementById('confirm-msg').innerText = msg;
+      pendingConfirmAction = onConfirm;
+
+      const modal = document.getElementById('confirm-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      lucide.createIcons();
+    }
+
+    function closeConfirmModal(execute = false) {
+      const modal = document.getElementById('confirm-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      if (execute && typeof pendingConfirmAction === 'function') {
+        pendingConfirmAction();
+      }
+      pendingConfirmAction = null;
+    }
+
+    document.getElementById('btn-confirm-action').addEventListener('click', () => {
+      closeConfirmModal(true);
+    });
+
+    // Heartbeat
     async function sendAdminHeartbeat() {
       try {
         await fetch(`${FIREBASE_DB_URL}/admin_heartbeat.json`, {
           method: 'PUT',
           body: JSON.stringify(Date.now())
         });
-      } catch (err) { console.error(err); }
+      } catch (err) {}
     }
     setInterval(sendAdminHeartbeat, 3000);
     sendAdminHeartbeat();
 
-    // 2. Load & Tampilkan Produk Layanan
+    // Produk Layanan
     async function loadProducts() {
       try {
         const res = await fetch(`${FIREBASE_DB_URL}/products.json`);
@@ -191,7 +274,6 @@
         tbody.innerHTML = '';
 
         if (Object.keys(currentProducts).length === 0) {
-          // Inisialisasi default 3 produk jika database produk masih kosong
           await initializeDefaultProducts();
           return;
         }
@@ -208,7 +290,7 @@
               <td class="p-3 font-bold text-indigo-600">Rp ${Number(p.price).toLocaleString('id-ID')}</td>
               <td class="p-3 text-center space-x-2">
                 <button onclick="editProduct('${key}')" class="text-indigo-600 hover:text-indigo-800 text-xs font-bold">Edit</button>
-                <button onclick="deleteProduct('${key}')" class="text-rose-600 hover:text-rose-800 text-xs font-bold">Hapus</button>
+                <button onclick="confirmDeleteProduct('${key}')" class="text-rose-600 hover:text-rose-800 text-xs font-bold">Hapus</button>
               </td>
             </tr>
           `;
@@ -279,17 +361,23 @@
       });
 
       closeProductModal();
+      showToast('Paket layanan berhasil disimpan.', 'success');
       loadProducts();
     }
 
-    async function deleteProduct(id) {
-      if (confirm('Yakin ingin menghapus paket layanan ini dari katalog?')) {
-        await fetch(`${FIREBASE_DB_URL}/products/${id}.json`, { method: 'DELETE' });
-        loadProducts();
-      }
+    function confirmDeleteProduct(id) {
+      openConfirmModal(
+        'Hapus Layanan?',
+        'Paket ini akan langsung hilang dari katalog pembeli.',
+        async () => {
+          await fetch(`${FIREBASE_DB_URL}/products/${id}.json`, { method: 'DELETE' });
+          showToast('Paket berhasil dihapus.', 'info');
+          loadProducts();
+        }
+      );
     }
 
-    // 3. Load & Kelola Pesanan
+    // Pesanan Masuk
     async function loadOrders() {
       try {
         const res = await fetch(`${FIREBASE_DB_URL}/orders.json`);
@@ -330,14 +418,14 @@
               </td>
               <td class="p-4 text-center whitespace-nowrap space-x-2">
                 ${!isPaid 
-                  ? `<button onclick="verifyOrder('${o.order_id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-sm">
+                  ? `<button onclick="verifyOrder('${o.order_id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-1.5 rounded-lg transition shadow-sm">
                       Verifikasi Lunas
                      </button>` 
                   : `<button onclick="openEmailDraft('${o.email}', '${o.order_id}', '${o.package_name}')" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition inline-flex items-center gap-1 shadow-sm">
                       <i data-lucide="mail" class="w-3.5 h-3.5"></i> Kirim Email eSIM
                      </button>`
                 }
-                <button onclick="deleteOrder('${o.order_id}')" class="text-rose-500 hover:text-rose-700 text-xs font-bold px-2 py-1">
+                <button onclick="confirmDeleteOrder('${o.order_id}')" class="text-rose-500 hover:text-rose-700 text-xs font-bold px-2 py-1">
                   Hapus
                 </button>
               </td>
@@ -348,23 +436,27 @@
       } catch (err) { console.error(err); }
     }
 
-    // 4. Verifikasi & Hapus Order
     async function verifyOrder(orderId) {
       await fetch(`${FIREBASE_DB_URL}/orders/${orderId}/status.json`, {
         method: 'PUT',
         body: JSON.stringify('PAID')
       });
+      showToast(`Transaksi ${orderId} telah diverifikasi lunas!`, 'success');
       loadOrders();
     }
 
-    async function deleteOrder(orderId) {
-      if (confirm(`Hapus data transaksi ${orderId}?`)) {
-        await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, { method: 'DELETE' });
-        loadOrders();
-      }
+    function confirmDeleteOrder(orderId) {
+      openConfirmModal(
+        'Hapus Transaksi?',
+        `Data transaksi ${orderId} akan dihapus permanen dari server.`,
+        async () => {
+          await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, { method: 'DELETE' });
+          showToast(`Transaksi ${orderId} berhasil dihapus.`, 'info');
+          loadOrders();
+        }
+      );
     }
 
-    // 5. Template Pengiriman Email Otomatis (mailto)
     function openEmailDraft(email, orderId, packageName) {
       const subject = encodeURIComponent(`[eSIMGo] Profil QR Code eSIM Anda Siap Digunakan - Order #${orderId}`);
       const body = encodeURIComponent(
@@ -392,7 +484,6 @@ Salam hangat,
 eSIMGo / Rifki Cell Support`
       );
 
-      // Buka aplikasi email otomatis dengan data terisi lengkap
       window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
     }
 
@@ -408,7 +499,6 @@ eSIMGo / Rifki Cell Support`
       document.getElementById('image-modal').classList.remove('flex');
     }
 
-    // Interval Auto-load
     setInterval(loadOrders, 3000);
     loadProducts();
     loadOrders();
