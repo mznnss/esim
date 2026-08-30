@@ -10,10 +10,11 @@ export default async function handler(req, res) {
 
   const BOT_TOKEN = "8636838151:AAFpbytiio0xBSqW7hrqddhfLf3e2XwHrpY";
   
-  // Daftar Admin 1 dan Admin 2
-  const ADMIN_RECIPIENTS = [
-    "8731786333", // Admin 1
-    "6654067367"  // Admin 2
+  // Daftar target notifikasi: Grup + Japri Admin 1 & Admin 2
+  const ALL_RECIPIENTS = [
+    "-1004352073054", // Grup Telegram
+    "8731786333",     // Japri Admin 1
+    "6654067367"      // Japri Admin 2
   ];
 
   const nowWIB = new Intl.DateTimeFormat('id-ID', {
@@ -69,7 +70,8 @@ _Status transaksi telah diperbarui menjadi selesai._`;
   try {
     const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
     
-    const sendPromises = ADMIN_RECIPIENTS.map(chatId => 
+    // Broadcast ke Grup dan kedua Japri Admin
+    const sendPromises = ALL_RECIPIENTS.map(chatId =>
       fetch(telegramUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
