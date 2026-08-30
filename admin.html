@@ -17,7 +17,7 @@
   <!-- TOAST CONTAINER -->
   <div id="toast-container" class="fixed top-5 right-5 z-[999] flex flex-col gap-2 max-w-xs w-full pointer-events-none"></div>
 
-  <!-- SCREEN 1: PANEL LOGIN (MUNCUL JIKA BELUM LOGIN) -->
+  <!-- SCREEN 1: PANEL LOGIN -->
   <div id="login-screen" class="fixed inset-0 z-50 bg-slate-900 flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-sm w-full p-8 shadow-2xl text-center">
       <div class="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-500/30">
@@ -42,7 +42,7 @@
     </div>
   </div>
 
-  <!-- SCREEN 2: DASHBOARD UTAMA (TERBUKA SETELAH LOGIN) -->
+  <!-- SCREEN 2: DASHBOARD UTAMA -->
   <div id="main-dashboard" class="hidden p-4 sm:p-8 max-w-7xl mx-auto space-y-8">
     
     <!-- HEADER -->
@@ -64,14 +64,14 @@
 
       <div class="flex items-center gap-3">
         <!-- SAKLAR TOKO 24 JAM -->
-        <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 p-1.5 rounded-2xl">
-          <button id="btn-toggle-store" onclick="toggleStoreStatus()" class="px-3.5 py-1.5 rounded-xl text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 transition flex items-center gap-1.5 shadow-sm">
-            <i data-lucide="power" class="w-3.5 h-3.5"></i> <span id="store-status-text">Toko Buka (24 Jam)</span>
+        <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 p-2 rounded-2xl">
+          <button id="btn-toggle-store" onclick="toggleStoreStatus()" class="px-4 py-2 rounded-xl text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 transition flex items-center gap-1.5 shadow-sm">
+            <i data-lucide="power" class="w-3.5 h-3.5"></i> <span id="store-status-btn-text">Buka Toko</span>
           </button>
         </div>
 
         <!-- TOMBOL LOGOUT -->
-        <button onclick="handleLogout()" class="px-3.5 py-2 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 transition flex items-center gap-1 border border-rose-200">
+        <button onclick="handleLogout()" class="px-3.5 py-2.5 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 transition flex items-center gap-1 border border-rose-200">
           <i data-lucide="log-out" class="w-3.5 h-3.5"></i> Keluar
         </button>
       </div>
@@ -264,7 +264,7 @@
   <script>
     lucide.createIcons();
 
-    // ==================== PENGATURAN KREDENSIAL LOGIN ADMIN ====================
+    // ==================== KREDENSIAL LOGIN ADMIN ====================
     const ADMIN_AUTH = {
       user: "admin",
       pass: "esim123"
@@ -346,45 +346,57 @@
       }, 3500);
     }
 
-    // SAKLAR TOKO
+    // ==================== SAKLAR TOKO ====================
     async function loadStoreStatus() {
       try {
         const res = await fetch(`${FIREBASE_DB_URL}/store_settings/is_open.json`);
         const status = await res.json();
         isStoreOpen = (status !== null) ? status : true;
         renderStoreStatusUI();
-      } catch (err) {}
+      } catch (err) {
+        console.error("Gagal load status toko:", err);
+      }
     }
 
     function renderStoreStatusUI() {
-      const text = document.getElementById('store-status-text');
       const btn = document.getElementById('btn-toggle-store');
+      const text = document.getElementById('store-status-btn-text');
+      if (!btn || !text) return;
 
       if (isStoreOpen) {
-        text.innerText = "Toko Buka (24 Jam)";
-        btn.className = "px-3.5 py-1.5 rounded-xl text-xs font-extrabold text-white bg-rose-600 hover:bg-rose-700 transition flex items-center gap-1.5 shadow-sm";
-        btn.innerHTML = `<i data-lucide="power" class="w-3.5 h-3.5"></i> <span>Tutup Toko</span>`;
+        text.innerText = "Toko Buka (Klik utk Tutup)";
+        btn.className = "px-4 py-2 rounded-xl text-xs font-extrabold text-white bg-rose-600 hover:bg-rose-700 transition flex items-center gap-1.5 shadow-sm";
       } else {
-        text.innerText = "Toko Tutup";
-        btn.className = "px-3.5 py-1.5 rounded-xl text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 transition flex items-center gap-1.5 shadow-sm";
-        btn.innerHTML = `<i data-lucide="power" class="w-3.5 h-3.5"></i> <span>Buka Toko</span>`;
+        text.innerText = "Toko Tutup (Klik utk Buka)";
+        btn.className = "px-4 py-2 rounded-xl text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 transition flex items-center gap-1.5 shadow-sm";
       }
       lucide.createIcons();
     }
 
     async function toggleStoreStatus() {
+      const btn = document.getElementById('btn-toggle-store');
+      if (btn) btn.disabled = true;
+
       isStoreOpen = !isStoreOpen;
       renderStoreStatusUI();
 
-      await fetch(`${FIREBASE_DB_URL}/store_settings/is_open.json`, {
-        method: 'PUT',
-        body: JSON.stringify(isStoreOpen)
-      });
+      try {
+        await fetch(`${FIREBASE_DB_URL}/store_settings/is_open.json`, {
+          method: 'PUT',
+          body: JSON.stringify(isStoreOpen)
+        });
 
-      showToast(isStoreOpen ? 'Toko DIBUKA.' : 'Toko DITUTUP.', isStoreOpen ? 'success' : 'info');
+        showToast(isStoreOpen ? 'Toko berhasil DIBUKA!' : 'Toko berhasil DITUTUP!', isStoreOpen ? 'success' : 'info');
+      } catch (err) {
+        showToast('Gagal mengubah status di Firebase', 'error');
+        isStoreOpen = !isStoreOpen;
+        renderStoreStatusUI();
+      } finally {
+        if (btn) btn.disabled = false;
+      }
     }
 
-    // PRODUK
+    // ==================== PRODUK LAYANAN ====================
     async function loadProducts() {
       try {
         const res = await fetch(`${FIREBASE_DB_URL}/products.json`);
@@ -488,7 +500,7 @@
       }
     }
 
-    // PESANAN MASUK
+    // ==================== PESANAN MASUK ====================
     async function loadOrders() {
       try {
         const res = await fetch(`${FIREBASE_DB_URL}/orders.json`);
