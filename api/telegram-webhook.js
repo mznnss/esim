@@ -5,6 +5,11 @@ const FIREBASE_DB_URL = "https://esim-store-d7580-default-rtdb.europe-west1.fire
 const GMAIL_USER = process.env.GMAIL_USER || 'mizanzulmi1508@gmail.com';
 const GMAIL_PASS = process.env.GMAIL_PASS;
 
+const ADMIN_RECIPIENTS = [
+  "8731786333",
+  "6654067367"
+];
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(200).send('Webhook ready');
@@ -13,12 +18,12 @@ export default async function handler(req, res) {
   const update = req.body;
 
   try {
-    // 1. Tangani Klik Tombol "Verifikasi Lunas Langsung" di Chat Telegram
+    // 1. TANGANI KLIK TOMBOL "VERIFIKASI LUNAS" DARI SALAH SATU ADMIN
     if (update.callback_query) {
       const callback = update.callback_query;
       const data = callback.data;
 
-      if (data.startsWith('VERIFY_')) {
+      if (data && data.startsWith('VERIFY_')) {
         const orderId = data.replace('VERIFY_', '');
 
         await fetch(`${FIREBASE_DB_URL}/orders/${orderId}/status.json`, {
@@ -45,7 +50,7 @@ export default async function handler(req, res) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             chat_id: callback.message.chat.id,
-            text: `💡 *Order #${orderId} telah LUNAS!*\n\nUntuk mengirim QR Code ke pembeli, silakan *REPLY (Balas)* pesan ini dengan melampirkan **Foto / File PDF QR Code eSIM**.`,
+            text: `💡 *Order #${orderId} telah LUNAS!*\n\nSilakan *REPLY (Balas)* pesan ini dengan melampirkan **File PDF** atau **Foto QR Code** eSIM untuk dikirim ke pembeli.`,
             parse_mode: 'Markdown',
             reply_to_message_id: callback.message.message_id
           })
@@ -54,74 +59,108 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
-    // 2. Tangani Reply Foto/Dokumen QR Code dari Admin di Telegram
-    if (update.message && (update.message.photo || update.message.document) && update.message.reply_to_message) {
-      const replyText = update.message.reply_to_message.text || update.message.reply_to_message.caption || "";
-      const match = replyText.match(/ORD-\d+/);
+    // 2. TANGANI BALASAN (REPLY) PDF/QR DARI ADMIN 1 ATAU ADMIN 2
+    if (update.message && (update.message.document || update.message.photo) && update.message.reply_to_message) {
+      const senderId = String(update.message.chat.id);
+      
+      // Pastikan pengirim adalah salah satu admin terdaftar
+      if (!ADMIN_RECIPIENTS.includes(senderId)) {
+        return res.status(200).json({ ok: true });
+      }
+
+      const replyMsg = update.message.reply_to_message;
+      const replyText = replyMsg.text || replyMsg.caption || "";
+      const match = replyText.match(/ORD-\d+/i);
 
       if (match) {
-        const orderId = match[0];
+        const orderId = match[0].toUpperCase();
 
         const orderRes = await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`);
         const orderData = await orderRes.json();
 
-        if (orderData && orderData.email) {
-          let fileId = "";
-          let isPdf = false;
-
-          if (update.message.photo) {
-            const photos = update.message.photo;
-            fileId = photos[photos.length - 1].file_id;
-          } else if (update.message.document) {
-            fileId = update.message.document.file_id;
-            isPdf = update.message.document.mime_type === 'application/pdf';
-          }
-
-          const fileInfoRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${fileId}`);
-          const fileInfo = await fileInfoRes.json();
-          const filePath = fileInfo.result.file_path;
-          const downloadUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${filePath}`;
-
-          const fileBuffer = await (await fetch(downloadUrl)).arrayBuffer();
-          const buffer = Buffer.from(fileBuffer);
-
-          const transporter = nodemailer.createTransport({
-            service: 'gmail',
-            auth: { user: GMAIL_USER, pass: GMAIL_PASS }
-          });
-
-          await transporter.sendMail({
-            from: `"eSIMGo Official" <${GMAIL_USER}>`,
-            to: orderData.email,
-            subject: `[eSIMGo] Profil QR Code eSIM Anda Siap Digunakan - Order #${orderId}`,
-            html: `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
-                <h2 style="color: #4f46e5; text-align: center; margin-top: 0;">eSIMGo - Profil eSIM Siap</h2>
-                <p>Halo, pembayaran Anda untuk pesanan <b>#${orderId}</b> (${orderData.package_name}) telah diverifikasi.</p>
-                <p>QR Code / Dokumen aktivasi profil eSIM telah dilampirkan pada email ini. Silakan scan barcode tersebut melalui menu pengaturan seluler di ponsel Anda.</p>
-                <div style="background: #f8fafc; padding: 10px; border-radius: 8px; font-size: 12px; color: #64748b; margin: 15px 0;">
-                  <b>Catatan:</b> Pastikan mengaktifkan opsi <i>Data Roaming</i> setelah tiba di negara tujuan.
-                </div>
-                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 15px 0;" />
-                <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">© 2026 eSIMGo • Rifki Cell</p>
-              </div>
-            `,
-            attachments: [{
-              filename: isPdf ? `eSIM-Profile-${orderId}.pdf` : `eSIM-QRCode-${orderId}.png`,
-              content: buffer
-            }]
-          });
-
+        if (!orderData || !orderData.email) {
           await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               chat_id: update.message.chat.id,
-              text: `🚀 *SUKSES!* File QR Code eSIM untuk Order *#${orderId}* telah terkirim ke email pembeli (${orderData.email}).`,
+              text: `⚠️ Data pesanan *#${orderId}* tidak ditemukan.`,
               parse_mode: 'Markdown'
             })
           });
+          return res.status(200).json({ ok: true });
         }
+
+        let fileId = "";
+        let fileName = `eSIM-Profile-${orderId}.pdf`;
+
+        if (update.message.document) {
+          const doc = update.message.document;
+          fileId = doc.file_id;
+          fileName = doc.file_name || `eSIM-Profile-${orderId}.pdf`;
+        } else if (update.message.photo) {
+          const photos = update.message.photo;
+          fileId = photos[photos.length - 1].file_id;
+          fileName = `eSIM-QRCode-${orderId}.png`;
+        }
+
+        const fileInfoRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${fileId}`);
+        const fileInfo = await fileInfoRes.json();
+        
+        if (!fileInfo.ok || !fileInfo.result.file_path) {
+          throw new Error('Gagal mengunduh file dari Telegram');
+        }
+
+        const filePath = fileInfo.result.file_path;
+        const downloadUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${filePath}`;
+
+        const fileBuffer = await (await fetch(downloadUrl)).arrayBuffer();
+        const buffer = Buffer.from(fileBuffer);
+
+        const transporter = nodemailer.createTransport({
+          service: 'gmail',
+          auth: { user: GMAIL_USER, pass: GMAIL_PASS }
+        });
+
+        await transporter.sendMail({
+          from: `"eSIMGo Official" <${GMAIL_USER}>`,
+          to: orderData.email,
+          subject: `[eSIMGo] Profil & Panduan eSIM Anda Siap - Order #${orderId}`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
+              <h2 style="color: #4f46e5; text-align: center; margin-top: 0;">eSIMGo - Profil eSIM Siap Digunakan</h2>
+              <div style="background: #f8fafc; padding: 12px 15px; border-radius: 10px; font-size: 13px; margin: 15px 0;">
+                <p style="margin: 3px 0;"><b>No. Pesanan:</b> #${orderId}</p>
+                <p style="margin: 3px 0;"><b>Paket Layanan:</b> ${orderData.package_name}</p>
+                <p style="margin: 3px 0;"><b>Status:</b> <span style="color: #16a34a; font-weight: bold;">LUNAS</span></p>
+              </div>
+              <p style="font-size: 13px; color: #334155; line-height: 1.6;">
+                Halo, terima kasih telah berbelanja di eSIMGo. Dokumen / file profil eSIM Anda telah dilampirkan pada email ini.
+              </p>
+              <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 10px; margin: 15px 0; font-size: 12px; color: #991b1b;">
+                <b>Perhatian:</b> Aktifkan fitur <b>Data Roaming</b> di pengaturan smartphone Anda saat telah mendarat di negara tujuan.
+              </div>
+              <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+              <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">© 2026 eSIMGo • Rifki Cell</p>
+            </div>
+          `,
+          attachments: [{
+            filename: fileName,
+            content: buffer
+          }]
+        });
+
+        // Beritahu admin yang memproses
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: update.message.chat.id,
+            text: `🚀 *SUKSES!* File \`${fileName}\` untuk Order *#${orderId}* berhasil dikirim ke email pembeli (*${orderData.email}*).`,
+            parse_mode: 'Markdown',
+            reply_to_message_id: update.message.message_id
+          })
+        });
       }
     }
 
