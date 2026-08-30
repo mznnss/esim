@@ -5,10 +5,12 @@ const FIREBASE_DB_URL = "https://esim-store-d7580-default-rtdb.europe-west1.fire
 const GMAIL_USER = process.env.GMAIL_USER || 'mizanzulmi1508@gmail.com';
 const GMAIL_PASS = process.env.GMAIL_PASS;
 
-const ADMIN_RECIPIENTS = [
-  "8731786333",
-  "6654067367"
-];
+const ADMIN_NAMES = {
+  "8731786333": "Admin 1",
+  "6654067367": "Admin 2"
+};
+
+const ADMIN_RECIPIENTS = Object.keys(ADMIN_NAMES);
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -25,12 +27,15 @@ export default async function handler(req, res) {
 
       if (data && data.startsWith('VERIFY_')) {
         const orderId = data.replace('VERIFY_', '');
+        const adminId = String(callback.from.id);
+        const adminName = ADMIN_NAMES[adminId] || `Admin (${adminId})`;
 
         await fetch(`${FIREBASE_DB_URL}/orders/${orderId}/status.json`, {
           method: 'PUT',
           body: JSON.stringify('PAID')
         });
 
+        // Ubah tombol di pesan admin yang mengklik
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/editMessageReplyMarkup`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -39,18 +44,19 @@ export default async function handler(req, res) {
             message_id: callback.message.message_id,
             reply_markup: {
               inline_keyboard: [
-                [{ text: "✅ Status: LUNAS & DIVERIFIKASI", callback_data: "DONE" }]
+                [{ text: `✅ Terverifikasi Lunas oleh ${adminName}`, callback_data: "DONE" }]
               ]
             }
           })
         });
 
+        // Kirim instruksi reply dokumen ke admin tersebut
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             chat_id: callback.message.chat.id,
-            text: `💡 *Order #${orderId} telah LUNAS!*\n\nSilakan *REPLY (Balas)* pesan ini dengan melampirkan **File PDF** atau **Foto QR Code** eSIM untuk dikirim ke pembeli.`,
+            text: `💡 *Order #${orderId} telah diverifikasi LUNAS oleh Anda (${adminName})!*\n\nSilakan *REPLY (Balas)* pesan ini dengan melampirkan **File PDF** atau **Foto QR Code** eSIM untuk dikirim ke pembeli.`,
             parse_mode: 'Markdown',
             reply_to_message_id: callback.message.message_id
           })
@@ -74,6 +80,7 @@ export default async function handler(req, res) {
 
       if (match) {
         const orderId = match[0].toUpperCase();
+        const executorName = ADMIN_NAMES[senderId] || `Admin (${senderId})`;
 
         const orderRes = await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`);
         const orderData = await orderRes.json();
@@ -84,7 +91,7 @@ export default async function handler(req, res) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               chat_id: update.message.chat.id,
-              text: `⚠️ Data pesanan *#${orderId}* tidak ditemukan.`,
+              text: `⚠️ Data pesanan *#${orderId}* tidak ditemukan di database.`,
               parse_mode: 'Markdown'
             })
           });
@@ -108,7 +115,7 @@ export default async function handler(req, res) {
         const fileInfo = await fileInfoRes.json();
         
         if (!fileInfo.ok || !fileInfo.result.file_path) {
-          throw new Error('Gagal mengunduh file dari Telegram');
+          throw new Error('Gagal mengunduh file dari Telegram API');
         }
 
         const filePath = fileInfo.result.file_path;
@@ -117,6 +124,7 @@ export default async function handler(req, res) {
         const fileBuffer = await (await fetch(downloadUrl)).arrayBuffer();
         const buffer = Buffer.from(fileBuffer);
 
+        // Kirim email profil eSIM ke pembeli
         const transporter = nodemailer.createTransport({
           service: 'gmail',
           auth: { user: GMAIL_USER, pass: GMAIL_PASS }
@@ -131,8 +139,8 @@ export default async function handler(req, res) {
               <h2 style="color: #4f46e5; text-align: center; margin-top: 0;">eSIMGo - Profil eSIM Siap Digunakan</h2>
               <div style="background: #f8fafc; padding: 12px 15px; border-radius: 10px; font-size: 13px; margin: 15px 0;">
                 <p style="margin: 3px 0;"><b>No. Pesanan:</b> #${orderId}</p>
-                <p style="margin: 3px 0;"><b>Paket Layanan:</b> ${orderData.package_name}</p>
-                <p style="margin: 3px 0;"><b>Status:</b> <span style="color: #16a34a; font-weight: bold;">LUNAS</span></p>
+                <p style="margin: 3px 0;"><b>Paket Layanan:</b> ${orderData.package_name || '-'}</p>
+                <p style="margin: 3px 0;"><b>Status:</b> <span style="color: #16a34a; font-weight: bold;">LUNAS & SELESAI</span></p>
               </div>
               <p style="font-size: 13px; color: #334155; line-height: 1.6;">
                 Halo, terima kasih telah berbelanja di eSIMGo. Dokumen / file profil eSIM Anda telah dilampirkan pada email ini.
@@ -150,17 +158,46 @@ export default async function handler(req, res) {
           }]
         });
 
-        // Beritahu admin yang memproses
-        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id: update.message.chat.id,
-            text: `🚀 *SUKSES!* File \`${fileName}\` untuk Order *#${orderId}* berhasil dikirim ke email pembeli (*${orderData.email}*).`,
-            parse_mode: 'Markdown',
-            reply_to_message_id: update.message.message_id
-          })
+        // Update status pesanan di Firebase menjadi COMPLETED
+        await fetch(`${FIREBASE_DB_URL}/orders/${orderId}/status.json`, {
+          method: 'PUT',
+          body: JSON.stringify('COMPLETED')
         });
+
+        // Buat pesan notifikasi sukses untuk disebar ke SEMUA admin
+        const nowWIB = new Intl.DateTimeFormat('id-ID', {
+          timeZone: 'Asia/Jakarta',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false
+        }).format(new Date());
+
+        const successBroadcastMessage = `🚀 *TRANSAKSI SELESAI & TERKIRIM!*
+━━━━━━━━━━━━━━━━━━
+🆔 *Order ID:* \`${orderId}\`
+📦 *Paket:* ${orderData.package_name || '-'}
+📧 *Email:* ${orderData.email}
+📎 *File:* \`${fileName}\`
+👤 *Diproses oleh:* *${executorName}*
+⏱ *Waktu:* ${nowWIB} WIB
+
+_QR Code / PDF telah berhasil dikirimkan ke email pembeli._`;
+
+        // Broadcast notifikasi ke Admin 1 dan Admin 2
+        const broadcastPromises = ADMIN_RECIPIENTS.map(chatId =>
+          fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              text: successBroadcastMessage,
+              parse_mode: 'Markdown'
+            })
+          })
+        );
+
+        await Promise.all(broadcastPromises);
       }
     }
 
