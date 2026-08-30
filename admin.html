@@ -34,6 +34,53 @@
     </div>
   </div>
 
+  <!-- MODAL KIRIM EMAIL & ATTACHMENT QR/PDF -->
+  <div id="send-email-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative">
+      <button onclick="closeSendEmailModal()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-600">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <div class="flex items-center gap-2 mb-2">
+        <span class="bg-indigo-100 text-indigo-600 p-2 rounded-xl"><i data-lucide="send" class="w-4 h-4"></i></span>
+        <h3 class="text-base font-bold text-slate-900">Kirim Profil eSIM ke Pembeli</h3>
+      </div>
+      <p class="text-xs text-slate-500 mb-4">Upload gambar QR code atau file PDF profil eSIM yang akan dikirim ke email pembeli.</p>
+      
+      <div class="space-y-3.5 text-xs">
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Email Penerima</label>
+          <input type="text" id="email-modal-target" readonly class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-600 font-medium" />
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Paket yang Dibeli</label>
+          <input type="text" id="email-modal-package" readonly class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-600 font-medium" />
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Upload File QR Code / PDF eSIM (Opsional tapi disarankan)</label>
+          <div class="border-2 border-dashed border-slate-200 rounded-2xl p-4 text-center hover:border-indigo-400 transition bg-slate-50 cursor-pointer" onclick="document.getElementById('esim-file-input').click()">
+            <i data-lucide="file-up" class="w-7 h-7 text-slate-400 mx-auto mb-1.5"></i>
+            <span id="esim-file-name" class="text-xs font-semibold text-slate-700 block">Pilih Gambar QR (PNG/JPG) atau PDF</span>
+            <span class="text-[10px] text-slate-400">File akan otomatis dilampirkan ke email</span>
+            <input type="file" id="esim-file-input" accept="image/*,.pdf" class="hidden" onchange="previewEsimFile()" />
+          </div>
+          <img id="esim-image-preview" src="" class="hidden w-28 h-28 object-contain mx-auto mt-2 rounded-xl border border-slate-200 shadow-sm" />
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Catatan Tambahan (Opsional)</label>
+          <input type="text" id="email-modal-notes" placeholder="Contoh: SM-DP+ Address: rsp.truphone.com..." class="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-800 outline-none focus:ring-2 focus:ring-indigo-600" />
+        </div>
+
+        <button id="btn-execute-send-email" onclick="executeSendEmailWithAttachment()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition text-xs flex items-center justify-center gap-2 shadow-sm">
+          <i data-lucide="mail-check" class="w-4 h-4"></i> Kirim Email Sekarang
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div class="max-w-7xl mx-auto space-y-8">
     
     <!-- HEADER -->
@@ -200,8 +247,10 @@
     let currentOrders = [];
     let currentProducts = {};
     let pendingConfirmAction = null;
+    let activeSendEmailOrder = null;
+    let selectedEsimFileBase64 = null;
 
-    // Toast Notification System
+    // Toast UI System
     function showToast(message, type = 'info') {
       const container = document.getElementById('toast-container');
       const toast = document.createElement('div');
@@ -435,8 +484,8 @@
                   ? `<button onclick="verifyOrder('${o.order_id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-1.5 rounded-lg transition shadow-sm">
                       Verifikasi Lunas
                      </button>` 
-                  : `<button onclick="sendAutomatedEmail('${o.email}', '${o.order_id}', '${o.package_name}', this)" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition inline-flex items-center gap-1 shadow-sm">
-                      <i data-lucide="mail" class="w-3.5 h-3.5"></i> Kirim Email Otomatis
+                  : `<button onclick="openSendEmailModal('${o.email}', '${o.order_id}', '${o.package_name}')" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition inline-flex items-center gap-1 shadow-sm">
+                      <i data-lucide="qr-code" class="w-3.5 h-3.5"></i> Kirim QR / PDF
                      </button>`
                 }
                 <button onclick="confirmDeleteOrder('${o.order_id}')" class="text-rose-500 hover:text-rose-700 text-xs font-bold px-2 py-1">
@@ -471,35 +520,86 @@
       );
     }
 
-    // Pengiriman Email Otomatis Menggunakan Resend API
-    async function sendAutomatedEmail(email, orderId, packageName, btnElement) {
-      btnElement.innerText = "Mengirim...";
-      btnElement.disabled = true;
+    // Modal Kirim QR/PDF eSIM
+    function openSendEmailModal(email, orderId, packageName) {
+      activeSendEmailOrder = { email, orderId, packageName };
+      document.getElementById('email-modal-target').value = email;
+      document.getElementById('email-modal-package').value = packageName;
+      document.getElementById('email-modal-notes').value = '';
+      document.getElementById('esim-file-name').innerText = "Pilih Gambar QR (PNG/JPG) atau PDF";
+      document.getElementById('esim-file-input').value = "";
+      document.getElementById('esim-image-preview').classList.add('hidden');
+      selectedEsimFileBase64 = null;
+
+      const modal = document.getElementById('send-email-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      lucide.createIcons();
+    }
+
+    function closeSendEmailModal() {
+      const modal = document.getElementById('send-email-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function previewEsimFile() {
+      const file = document.getElementById('esim-file-input').files[0];
+      if (file) {
+        document.getElementById('esim-file-name').innerText = file.name;
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          selectedEsimFileBase64 = reader.result;
+          if (file.type.startsWith('image/')) {
+            const img = document.getElementById('esim-image-preview');
+            img.src = selectedEsimFileBase64;
+            img.classList.remove('hidden');
+          } else {
+            document.getElementById('esim-image-preview').classList.add('hidden');
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    async function executeSendEmailWithAttachment() {
+      if (!activeSendEmailOrder) return;
+
+      const btn = document.getElementById('btn-execute-send-email');
+      const originalText = btn.innerHTML;
+      btn.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Mengirim Email & Lampiran...`;
+      btn.disabled = true;
+
+      const customNotes = document.getElementById('email-modal-notes').value.trim();
 
       try {
         const res = await fetch('/api/send-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, orderId, packageName })
+          body: JSON.stringify({
+            email: activeSendEmailOrder.email,
+            orderId: activeSendEmailOrder.orderId,
+            packageName: activeSendEmailOrder.packageName,
+            qrCodeBase64: selectedEsimFileBase64,
+            customNotes: customNotes
+          })
         });
 
         const data = await res.json();
 
         if (res.ok && data.success) {
-          showToast(`Email berhasil terkirim ke ${email}!`, 'success');
-          btnElement.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5"></i> Email Terkirim`;
-          btnElement.className = "bg-emerald-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg inline-flex items-center gap-1 cursor-default";
+          showToast(`QR/PDF eSIM berhasil terkirim ke ${activeSendEmailOrder.email}!`, 'success');
+          closeSendEmailModal();
         } else {
           showToast(data.error || 'Gagal mengirim email', 'error');
-          btnElement.innerHTML = `<i data-lucide="mail" class="w-3.5 h-3.5"></i> Kirim Ulang`;
-          btnElement.disabled = false;
         }
       } catch (err) {
-        showToast('Terjadi kesalahan koneksi saat kirim email', 'error');
-        btnElement.innerHTML = `<i data-lucide="mail" class="w-3.5 h-3.5"></i> Kirim Email`;
-        btnElement.disabled = false;
+        showToast('Terjadi kesalahan koneksi saat mengirim email', 'error');
+      } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        lucide.createIcons();
       }
-      lucide.createIcons();
     }
 
     function viewImage(index) {
