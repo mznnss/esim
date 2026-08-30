@@ -6,7 +6,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
-  const { orderId, packageName, price, email, type } = req.body;
+  const { orderId, packageName, price, email, type, completedBy } = req.body;
 
   const BOT_TOKEN = "8636838151:AAFpbytiio0xBSqW7hrqddhfLf3e2XwHrpY";
   
@@ -31,8 +31,8 @@ export default async function handler(req, res) {
     messageText = `🛒 *PESANAN BARU MASUK!*
 ━━━━━━━━━━━━━━━━━━
 🆔 *Order ID:* \`${orderId}\`
-📦 *Paket:* ${packageName}
-💰 *Nominal:* Rp ${Number(price).toLocaleString('id-ID')}
+📦 *Paket:* ${packageName || '-'}
+💰 *Nominal:* Rp ${Number(price || 0).toLocaleString('id-ID')}
 📧 *Email:* ${email}
 ⏱ *Waktu:* ${nowWIB} WIB
 
@@ -42,7 +42,7 @@ _Menunggu pembayaran QRIS..._`;
 ━━━━━━━━━━━━━━━━━━
 🆔 *Order ID:* \`${orderId}\`
 📧 *Email:* ${email}
-💰 *Tagihan:* Rp ${Number(price).toLocaleString('id-ID')}
+💰 *Tagihan:* Rp ${Number(price || 0).toLocaleString('id-ID')}
 ⏱ *Waktu:* ${nowWIB} WIB
 
 _Klik tombol di bawah untuk verifikasi lunas:_`;
@@ -52,6 +52,18 @@ _Klik tombol di bawah untuk verifikasi lunas:_`;
         { text: "✅ Verifikasi Lunas Langsung", callback_data: `VERIFY_${orderId}` }
       ]
     ];
+  } else if (type === 'ORDER_COMPLETED') {
+    const actor = completedBy || 'Sistem Web Otomatis';
+    messageText = `✅ *TRANSAKSI SELESAI DARI WEB!*
+━━━━━━━━━━━━━━━━━━
+🆔 *Order ID:* \`${orderId}\`
+📦 *Paket:* ${packageName || '-'}
+💰 *Nominal:* Rp ${Number(price || 0).toLocaleString('id-ID')}
+📧 *Email:* ${email}
+👤 *Eksekutor:* *${actor}*
+⏱ *Waktu:* ${nowWIB} WIB
+
+_Status transaksi telah diperbarui menjadi selesai._`;
   }
 
   try {
