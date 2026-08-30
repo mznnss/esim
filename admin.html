@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Admin Dashboard - Manajemen eSIM</title>
 
-  <!-- FAVICON RESMI LOGO ESIM -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%234f46e5'/><path d='M25 25h35l15 15v35H25z' fill='none' stroke='white' stroke-width='8'/><path d='M40 45h20M40 60h20M50 35v35' stroke='white' stroke-width='7' stroke-linecap='round'/></svg>">
 
   <script src="https://cdn.tailwindcss.com"></script>
@@ -87,7 +86,7 @@
 
   <div class="max-w-7xl mx-auto space-y-8">
     
-    <!-- HEADER -->
+    <!-- HEADER DENGAN SAKLAR BUKA/TUTUP TOKO -->
     <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
       <div class="flex items-center gap-3">
         <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-violet-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
@@ -100,15 +99,19 @@
         </div>
         <div>
           <h1 class="text-2xl font-black text-slate-900 leading-tight">Dashboard Pengelola eSIM</h1>
-          <p class="text-xs text-slate-500">Kelola katalog layanan, harga diskon, pantau pembayaran, dan kirim profil eSIM.</p>
+          <p class="text-xs text-slate-500">Kelola katalog, terima notifikasi Telegram, dan kirim profil eSIM.</p>
         </div>
       </div>
 
-      <div class="flex items-center gap-3">
-        <div class="flex items-center gap-2 px-3.5 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold">
-          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-          Status: Toko Online (Admin Aktif)
+      <!-- SAKLAR TOKO MANUAL -->
+      <div class="flex items-center gap-3 bg-slate-50 border border-slate-200 p-2 rounded-2xl">
+        <div class="text-right">
+          <span class="text-[10px] uppercase font-bold text-slate-400 block leading-none">Status Toko</span>
+          <span id="store-status-text" class="text-xs font-black text-emerald-600">Buka (24 Jam)</span>
         </div>
+        <button id="btn-toggle-store" onclick="toggleStoreStatus()" class="px-4 py-2 rounded-xl text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 transition flex items-center gap-1.5 shadow-sm">
+          <i data-lucide="power" class="w-3.5 h-3.5"></i> <span>Toko Buka</span>
+        </button>
       </div>
     </div>
 
@@ -257,6 +260,7 @@
 
     let currentOrders = [];
     let currentProducts = {};
+    let isStoreOpen = true;
     let pendingConfirmAction = null;
     let activeSendEmailOrder = null;
     let selectedEsimFileBase64 = null;
@@ -319,19 +323,49 @@
       closeConfirmModal(true);
     });
 
-    // Heartbeat Admin
-    async function sendAdminHeartbeat() {
+    // ==================== SAKLAR STATUS TOKO ====================
+    async function loadStoreStatus() {
       try {
-        await fetch(`${FIREBASE_DB_URL}/admin_heartbeat.json`, {
-          method: 'PUT',
-          body: JSON.stringify(Date.now())
-        });
+        const res = await fetch(`${FIREBASE_DB_URL}/store_settings/is_open.json`);
+        const status = await res.json();
+        
+        // Default selalu true jika belum pernah disetel
+        isStoreOpen = (status !== null) ? status : true;
+        renderStoreStatusUI();
       } catch (err) {}
     }
-    setInterval(sendAdminHeartbeat, 3000);
-    sendAdminHeartbeat();
 
-    // Produk Layanan
+    function renderStoreStatusUI() {
+      const text = document.getElementById('store-status-text');
+      const btn = document.getElementById('btn-toggle-store');
+
+      if (isStoreOpen) {
+        text.innerText = "Buka (24 Jam)";
+        text.className = "text-xs font-black text-emerald-600";
+        btn.className = "px-4 py-2 rounded-xl text-xs font-extrabold text-white bg-rose-600 hover:bg-rose-700 transition flex items-center gap-1.5 shadow-sm";
+        btn.innerHTML = `<i data-lucide="power" class="w-3.5 h-3.5"></i> <span>Tutup Toko</span>`;
+      } else {
+        text.innerText = "Tutup Manual";
+        text.className = "text-xs font-black text-rose-600";
+        btn.className = "px-4 py-2 rounded-xl text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 transition flex items-center gap-1.5 shadow-sm";
+        btn.innerHTML = `<i data-lucide="power" class="w-3.5 h-3.5"></i> <span>Buka Toko</span>`;
+      }
+      lucide.createIcons();
+    }
+
+    async function toggleStoreStatus() {
+      isStoreOpen = !isStoreOpen;
+      renderStoreStatusUI();
+
+      await fetch(`${FIREBASE_DB_URL}/store_settings/is_open.json`, {
+        method: 'PUT',
+        body: JSON.stringify(isStoreOpen)
+      });
+
+      showToast(isStoreOpen ? 'Toko berhasil DIBUKA! Pembeli bisa order 24 jam.' : 'Toko DITUTUP sementara.', isStoreOpen ? 'success' : 'info');
+    }
+
+    // ==================== PRODUK LAYANAN ====================
     async function loadProducts() {
       try {
         const res = await fetch(`${FIREBASE_DB_URL}/products.json`);
@@ -364,6 +398,7 @@
             </tr>
           `;
         });
+        lucide.createIcons();
       } catch (e) { console.error(e); }
     }
 
@@ -451,7 +486,7 @@
       );
     }
 
-    // Pesanan Masuk
+    // ==================== PESANAN MASUK ====================
     async function loadOrders() {
       try {
         const res = await fetch(`${FIREBASE_DB_URL}/orders.json`);
@@ -531,7 +566,6 @@
       );
     }
 
-    // Modal Kirim QR/PDF eSIM
     function openSendEmailModal(email, orderId, packageName) {
       activeSendEmailOrder = { email, orderId, packageName };
       document.getElementById('email-modal-target').value = email;
@@ -625,9 +659,10 @@
       document.getElementById('image-modal').classList.remove('flex');
     }
 
-    setInterval(loadOrders, 3000);
+    loadStoreStatus();
     loadProducts();
     loadOrders();
+    setInterval(loadOrders, 4000);
   </script>
 </body>
 </html>
