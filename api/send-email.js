@@ -17,14 +17,18 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Email dan Order ID wajib diisi' });
   }
 
-  // API Key Baru Resend
-  const RESEND_API_KEY = "re_B5kQM1RG_N9gNr587LLtvF4e25yn3CxJF";
+  // Mengambil API Key dari Environment Variable Vercel
+  const apiKey = process.env.RESEND_API_KEY;
+
+  if (!apiKey) {
+    return res.status(500).json({ error: 'RESEND_API_KEY belum disetel di Vercel Settings' });
+  }
 
   try {
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
