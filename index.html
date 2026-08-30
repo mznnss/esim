@@ -22,20 +22,14 @@
         </div>
         <span class="font-extrabold text-xl tracking-tight text-slate-900">eSIM<span class="text-indigo-600">Go</span></span>
       </div>
-
-      <div class="hidden md:flex items-center gap-8 font-semibold text-sm text-slate-600">
-        <a href="#destinasi" class="hover:text-indigo-600 transition">Destinasi</a>
-        <a href="#cara-kerja" class="hover:text-indigo-600 transition">Cara Kerja</a>
-      </div>
-
       <div class="flex items-center gap-2">
         <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-        <span class="text-xs font-bold text-slate-600">Server Aktif</span>
+        <span class="text-xs font-bold text-slate-600">Layanan Aktif</span>
       </div>
     </div>
   </nav>
 
-  <!-- HERO SECTION -->
+  <!-- HERO -->
   <header class="relative overflow-hidden pt-12 pb-16 bg-gradient-to-b from-indigo-50/60 via-white to-slate-50 border-b border-slate-200/60 text-center px-4">
     <div class="max-w-5xl mx-auto">
       <span class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700 mb-6">
@@ -49,7 +43,6 @@
         Beli paket eSIM roaming, bayar via QRIS Rifki Cell, upload bukti transfer, dan terima profil eSIM di email Anda.
       </p>
 
-      <!-- Filter Pencarian -->
       <div class="mt-8 max-w-xl mx-auto relative">
         <div class="relative flex items-center">
           <i data-lucide="search" class="w-5 h-5 absolute left-4 text-slate-400"></i>
@@ -65,16 +58,11 @@
     </div>
   </header>
 
-  <!-- KATALOG DESTINASI -->
+  <!-- KATALOG -->
   <main id="destinasi" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex-grow w-full">
-    <div class="mb-8">
-      <h2 class="text-2xl font-bold text-slate-900">Pilihan Paket Terpopuler</h2>
-      <p class="text-slate-500 text-sm">Pilih kuota dan masa aktif sesuai kebutuhan perjalanan</p>
-    </div>
-
-    <div id="product-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
       
-      <!-- Card 1: Jepang -->
+      <!-- Jepang -->
       <div class="product-card bg-white border border-slate-200 rounded-3xl p-6 hover:shadow-xl transition-all duration-300 flex flex-col justify-between" data-country="jepang japan asia tokyo osaka">
         <div>
           <div class="flex items-center justify-between mb-4">
@@ -89,24 +77,14 @@
           </div>
 
           <div class="space-y-2.5 border-t border-slate-100 pt-4 my-4 text-sm text-slate-600">
-            <div class="flex justify-between">
-              <span>Kuota Data:</span>
-              <span class="font-bold text-slate-800">10 GB (High Speed)</span>
-            </div>
-            <div class="flex justify-between">
-              <span>Masa Aktif:</span>
-              <span class="font-semibold text-slate-800">7 Hari</span>
-            </div>
-            <div class="flex justify-between">
-              <span>Fitur:</span>
-              <span class="font-semibold text-slate-800">Tethering / Hotspot Aktif</span>
-            </div>
+            <div class="flex justify-between"><span>Kuota Data:</span><span class="font-bold text-slate-800">10 GB (High Speed)</span></div>
+            <div class="flex justify-between"><span>Masa Aktif:</span><span class="font-semibold text-slate-800">7 Hari</span></div>
           </div>
         </div>
 
         <div class="border-t border-slate-100 pt-4 flex items-center justify-between">
           <div>
-            <span class="text-xs text-slate-400 block font-medium">Harga Paket</span>
+            <span class="text-xs text-slate-400 block font-medium">Harga</span>
             <span class="text-xl font-extrabold text-indigo-600">Rp 145.000</span>
           </div>
           <button onclick="openOrderModal('Jepang - 10 GB (7 Hari)', 145000)" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl transition text-sm flex items-center gap-1.5 shadow-sm">
@@ -115,7 +93,7 @@
         </div>
       </div>
 
-      <!-- Card 2: Singapura -->
+      <!-- Singapura -->
       <div class="product-card bg-white border border-slate-200 rounded-3xl p-6 hover:shadow-xl transition-all duration-300 flex flex-col justify-between" data-country="singapura singapore asean asia">
         <div>
           <div class="flex items-center justify-between mb-4">
@@ -130,24 +108,14 @@
           </div>
 
           <div class="space-y-2.5 border-t border-slate-100 pt-4 my-4 text-sm text-slate-600">
-            <div class="flex justify-between">
-              <span>Kuota Data:</span>
-              <span class="font-bold text-slate-800">Unlimited (FUP 2GB/hari)</span>
-            </div>
-            <div class="flex justify-between">
-              <span>Masa Aktif:</span>
-              <span class="font-semibold text-slate-800">5 Hari</span>
-            </div>
-            <div class="flex justify-between">
-              <span>Fitur:</span>
-              <span class="font-semibold text-slate-800">Bebas Roaming</span>
-            </div>
+            <div class="flex justify-between"><span>Kuota Data:</span><span class="font-bold text-slate-800">Unlimited (FUP 2GB/hr)</span></div>
+            <div class="flex justify-between"><span>Masa Aktif:</span><span class="font-semibold text-slate-800">5 Hari</span></div>
           </div>
         </div>
 
         <div class="border-t border-slate-100 pt-4 flex items-center justify-between">
           <div>
-            <span class="text-xs text-slate-400 block font-medium">Harga Paket</span>
+            <span class="text-xs text-slate-400 block font-medium">Harga</span>
             <span class="text-xl font-extrabold text-indigo-600">Rp 85.000</span>
           </div>
           <button onclick="openOrderModal('Singapura - Unlimited (5 Hari)', 85000)" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl transition text-sm flex items-center gap-1.5 shadow-sm">
@@ -156,7 +124,7 @@
         </div>
       </div>
 
-      <!-- Card 3: Eropa -->
+      <!-- Eropa -->
       <div class="product-card bg-white border border-slate-200 rounded-3xl p-6 hover:shadow-xl transition-all duration-300 flex flex-col justify-between" data-country="eropa europe perancis jerman uk inggris italia belanda">
         <div>
           <div class="flex items-center justify-between mb-4">
@@ -164,31 +132,21 @@
               <span class="text-4xl">🇪🇺</span>
               <div>
                 <h3 class="font-bold text-lg text-slate-900">Eropa (33 Negara)</h3>
-                <p class="text-xs text-slate-500">Vodafone & Orange Multi-Carrier</p>
+                <p class="text-xs text-slate-500">Vodafone Multi-Carrier</p>
               </div>
             </div>
             <span class="bg-indigo-50 text-indigo-700 text-xs font-bold px-2.5 py-1 rounded-lg">Multi-Negara</span>
           </div>
 
           <div class="space-y-2.5 border-t border-slate-100 pt-4 my-4 text-sm text-slate-600">
-            <div class="flex justify-between">
-              <span>Kuota Data:</span>
-              <span class="font-bold text-slate-800">20 GB Total</span>
-            </div>
-            <div class="flex justify-between">
-              <span>Masa Aktif:</span>
-              <span class="font-semibold text-slate-800">30 Hari</span>
-            </div>
-            <div class="flex justify-between">
-              <span>Fitur:</span>
-              <span class="font-semibold text-slate-800">Otomatis Switch Operator</span>
-            </div>
+            <div class="flex justify-between"><span>Kuota Data:</span><span class="font-bold text-slate-800">20 GB Total</span></div>
+            <div class="flex justify-between"><span>Masa Aktif:</span><span class="font-semibold text-slate-800">30 Hari</span></div>
           </div>
         </div>
 
         <div class="border-t border-slate-100 pt-4 flex items-center justify-between">
           <div>
-            <span class="text-xs text-slate-400 block font-medium">Harga Paket</span>
+            <span class="text-xs text-slate-400 block font-medium">Harga</span>
             <span class="text-xl font-extrabold text-indigo-600">Rp 320.000</span>
           </div>
           <button onclick="openOrderModal('Eropa 33 Negara - 20 GB (30 Hari)', 320000)" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl transition text-sm flex items-center gap-1.5 shadow-sm">
@@ -207,24 +165,24 @@
         <i data-lucide="x" class="w-5 h-5"></i>
       </button>
 
-      <!-- PHASE 1: FORM EMAIL -->
+      <!-- PHASE 1: EMAIL -->
       <div id="phase-form">
         <h3 class="text-lg font-bold text-slate-900 mb-1">Konfirmasi Pesanan</h3>
         <p class="text-xs text-slate-500 mb-4">Profil eSIM akan dikirimkan ke alamat email ini.</p>
 
         <div class="space-y-4">
           <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">Paket Terpilih</label>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Paket</label>
             <input type="text" id="m-package" readonly class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-bold text-slate-800" />
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">Alamat Email Penerima</label>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Email Penerima eSIM</label>
             <input type="email" id="m-email" placeholder="nama@email.com" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-600 text-slate-800 font-medium" />
           </div>
 
           <div class="border-t border-slate-100 pt-3 flex justify-between items-center text-sm">
-            <span class="text-slate-600 font-medium">Total Tagihan:</span>
+            <span class="text-slate-600 font-medium">Total:</span>
             <span id="m-total" class="font-extrabold text-indigo-600 text-lg">Rp 0</span>
           </div>
 
@@ -234,7 +192,7 @@
         </div>
       </div>
 
-      <!-- PHASE 2: DISPLAY QRIS RIFKI CELL -->
+      <!-- PHASE 2: QRIS RIFKI CELL -->
       <div id="phase-qris" class="hidden text-center">
         <div class="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-semibold mb-2">
           <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span> Scan QRIS & Selesaikan Pembayaran
@@ -248,7 +206,7 @@
             <span class="text-[10px] text-slate-400 font-mono">NMID: ID1024311428048</span>
           </div>
           
-          <img src="qris.jpg" alt="QRIS Rifki Cell" class="w-full h-auto rounded-xl mx-auto border border-slate-100" onerror="this.src='https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=RIFKI_CELL_QRIS'" />
+          <img src="qris.jpg" alt="QRIS Rifki Cell" class="w-full h-auto rounded-xl mx-auto border border-slate-100" />
           
           <div class="mt-1 text-[10px] font-bold text-blue-600">
             DANA Bisnis • Semua Pembayaran
@@ -264,7 +222,7 @@
         </button>
       </div>
 
-      <!-- PHASE 3: UPLOAD BUKTI TRANSFER -->
+      <!-- PHASE 3: UPLOAD BUKTI -->
       <div id="phase-upload" class="hidden text-center">
         <h3 class="text-lg font-bold text-slate-900 mb-1">Kirim Bukti Pembayaran</h3>
         <p class="text-xs text-slate-500 mb-4">Upload screenshot struk transfer m-banking / e-wallet Anda.</p>
@@ -273,31 +231,30 @@
           <div class="border-2 border-dashed border-slate-200 rounded-2xl p-4 text-center hover:border-indigo-400 transition bg-slate-50 cursor-pointer" onclick="document.getElementById('proof-file-input').click()">
             <i data-lucide="image" class="w-8 h-8 text-slate-400 mx-auto mb-2"></i>
             <span id="proof-file-name" class="text-xs font-semibold text-slate-600 block">Pilih File Foto Struk</span>
-            <span class="text-[10px] text-slate-400">Format: JPG, PNG</span>
             <input type="file" id="proof-file-input" accept="image/*" class="hidden" onchange="previewFile()" />
           </div>
 
           <img id="image-preview" src="" class="hidden w-36 h-36 object-cover mx-auto rounded-xl border border-slate-200 shadow-sm" />
 
-          <button onclick="submitProof()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl transition text-sm">
+          <button id="btn-submit-proof" onclick="submitProof()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl transition text-sm">
             Kirim Bukti Pembayaran
           </button>
         </div>
       </div>
 
-      <!-- PHASE 4: MENUNGGU VERIFIKASI ADMIN -->
+      <!-- PHASE 4: MENUNGGU VERIFIKASI -->
       <div id="phase-waiting" class="hidden text-center py-6">
         <div class="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-3 animate-bounce">
           <i data-lucide="clock" class="w-8 h-8"></i>
         </div>
         <h3 class="text-lg font-bold text-slate-900 mb-1">Bukti Berhasil Terkirim!</h3>
-        <p class="text-xs text-slate-500 mb-4">Admin Rifki Cell sedang memverifikasi saldo pembayaran Anda.</p>
+        <p class="text-xs text-slate-500 mb-4">Admin Rifki Cell sedang memverifikasi pembayaran Anda.</p>
         <div class="text-[11px] bg-slate-50 border border-slate-200 p-3 rounded-xl text-slate-500">
           Tetap di layar ini. Tampilan akan <b>otomatis berganti ke sukses</b> begitu diverifikasi.
         </div>
       </div>
 
-      <!-- PHASE 5: TRANSAKSI SELESAI -->
+      <!-- PHASE 5: SUKSES -->
       <div id="phase-success" class="hidden text-center py-4">
         <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3">
           <i data-lucide="check-circle-2" class="w-10 h-10"></i>
@@ -308,11 +265,6 @@
           <br><b id="success-email-display" class="text-indigo-600 font-bold text-sm"></b>
         </p>
 
-        <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl text-left text-xs text-slate-500 space-y-1 mb-5">
-          <p>• Silakan cek folder <b>Inbox</b> atau <b>Spam</b> email Anda.</p>
-          <p>• Proses pengiriman berlangsung dalam 5-15 menit.</p>
-        </div>
-
         <button onclick="closeModal()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 rounded-xl text-sm transition">
           Selesai
         </button>
@@ -322,28 +274,29 @@
   </div>
 
   <footer class="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-400">
-    &copy; 2026 eSIMGo • Rifki Cell (DANA Bisnis).
+    &copy; 2026 eSIMGo • Rifki Cell.
   </footer>
 
   <script>
     lucide.createIcons();
+
+    // Firebase Database Realtime Endpoint
+    const FIREBASE_DB_URL = "https://esim-store-d7580-default-rtdb.europe-west1.firebasedatabase.app";
 
     let currentPrice = 0;
     let currentPackage = '';
     let currentOrderId = '';
     let currentEmail = '';
     let base64Proof = null;
-    let pollingTimer = null;
+    let pollInterval = null;
 
     const modal = document.getElementById('checkout-modal');
 
     function filterDestinations() {
       const query = document.getElementById('search-input').value.toLowerCase();
-      const cards = document.querySelectorAll('.product-card');
-
-      cards.forEach(card => {
-        const countryData = card.getAttribute('data-country').toLowerCase();
-        card.style.display = countryData.includes(query) ? 'flex' : 'none';
+      document.querySelectorAll('.product-card').forEach(card => {
+        const country = card.getAttribute('data-country').toLowerCase();
+        card.style.display = country.includes(query) ? 'flex' : 'none';
       });
     }
 
@@ -352,16 +305,14 @@
       currentPrice = price;
       document.getElementById('m-package').value = packageName;
       document.getElementById('m-total').innerText = 'Rp ' + price.toLocaleString('id-ID');
-
       hideAllPhases();
       document.getElementById('phase-form').classList.remove('hidden');
-
       modal.classList.remove('hidden');
       modal.classList.add('flex');
     }
 
     function closeModal() {
-      if (pollingTimer) clearInterval(pollingTimer);
+      if (pollInterval) clearInterval(pollInterval);
       modal.classList.add('hidden');
       modal.classList.remove('flex');
     }
@@ -374,31 +325,30 @@
 
     async function proceedToPayment() {
       currentEmail = document.getElementById('m-email').value.trim();
-      if (!currentEmail || !currentEmail.includes('@')) {
-        alert('Harap masukkan email yang valid!');
-        return;
-      }
+      if (!currentEmail || !currentEmail.includes('@')) return alert('Email tidak valid!');
 
-      try {
-        const res = await fetch('/api/order', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ package_name: currentPackage, price: currentPrice, email: currentEmail })
-        });
-        const data = await res.json();
+      currentOrderId = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
+      const newOrder = {
+        order_id: currentOrderId,
+        package_name: currentPackage,
+        price: currentPrice,
+        email: currentEmail,
+        proof_image: null,
+        status: 'PENDING',
+        created_at: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+      };
 
-        if (data.success) {
-          currentOrderId = data.order.order_id;
-          hideAllPhases();
-          document.getElementById('phase-qris').classList.remove('hidden');
-          document.getElementById('qris-order-id').innerText = currentOrderId;
-          document.getElementById('qris-total-amount').innerText = 'Rp ' + currentPrice.toLocaleString('id-ID');
+      await fetch(`${FIREBASE_DB_URL}/orders/${currentOrderId}.json`, {
+        method: 'PUT',
+        body: JSON.stringify(newOrder)
+      });
 
-          startPolling(currentOrderId);
-        }
-      } catch (err) {
-        alert('Gagal memproses transaksi.');
-      }
+      hideAllPhases();
+      document.getElementById('phase-qris').classList.remove('hidden');
+      document.getElementById('qris-order-id').innerText = currentOrderId;
+      document.getElementById('qris-total-amount').innerText = 'Rp ' + currentPrice.toLocaleString('id-ID');
+
+      startRealtimeListener(currentOrderId);
     }
 
     function showProofUpload() {
@@ -408,60 +358,52 @@
     }
 
     function previewFile() {
-      const fileInput = document.getElementById('proof-file-input');
-      const file = fileInput.files[0];
+      const file = document.getElementById('proof-file-input').files[0];
       if (file) {
         document.getElementById('proof-file-name').innerText = file.name;
         const reader = new FileReader();
         reader.onloadend = () => {
           base64Proof = reader.result;
-          const preview = document.getElementById('image-preview');
-          preview.src = base64Proof;
-          preview.classList.remove('hidden');
+          const img = document.getElementById('image-preview');
+          img.src = base64Proof;
+          img.classList.remove('hidden');
         };
         reader.readAsDataURL(file);
       }
     }
 
     async function submitProof() {
-      if (!base64Proof) {
-        alert('Silakan pilih foto bukti transfer terlebih dahulu!');
-        return;
-      }
+      if (!base64Proof) return alert('Silakan pilih foto bukti transfer!');
 
-      try {
-        await fetch('/api/upload-proof', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ order_id: currentOrderId, proof_image: base64Proof })
-        });
+      const btn = document.getElementById('btn-submit-proof');
+      btn.innerText = 'Mengunggah...';
+      btn.disabled = true;
 
-        hideAllPhases();
-        document.getElementById('phase-waiting').classList.remove('hidden');
-        lucide.createIcons();
-      } catch (e) {
-        alert('Gagal mengirim bukti transfer.');
-      }
+      await fetch(`${FIREBASE_DB_URL}/orders/${currentOrderId}/proof_image.json`, {
+        method: 'PUT',
+        body: JSON.stringify(base64Proof)
+      });
+
+      hideAllPhases();
+      document.getElementById('phase-waiting').classList.remove('hidden');
+      lucide.createIcons();
     }
 
-    function startPolling(orderId) {
-      if (pollingTimer) clearInterval(pollingTimer);
-      pollingTimer = setInterval(async () => {
+    function startRealtimeListener(orderId) {
+      if (pollInterval) clearInterval(pollInterval);
+      pollInterval = setInterval(async () => {
         try {
-          const res = await fetch(`/api/order-status?orderId=${orderId}`);
-          const data = await res.json();
-
-          if (data.status === 'PAID') {
-            clearInterval(pollingTimer);
+          const res = await fetch(`${FIREBASE_DB_URL}/orders/${orderId}/status.json`);
+          const status = await res.json();
+          if (status === 'PAID') {
+            clearInterval(pollInterval);
             hideAllPhases();
             document.getElementById('phase-success').classList.remove('hidden');
             document.getElementById('success-email-display').innerText = currentEmail;
             lucide.createIcons();
           }
-        } catch (e) {
-          console.error('Polling error:', e);
-        }
-      }, 2000);
+        } catch (e) {}
+      }, 1500);
     }
   </script>
 </body>
