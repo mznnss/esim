@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin Dashboard - Verifikasi Bukti Bayar eSIM</title>
+  <title>Admin Dashboard - Manajemen eSIM</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -11,31 +11,68 @@
 </head>
 <body class="bg-slate-100 p-4 sm:p-8 min-h-screen text-slate-800">
 
-  <div class="max-w-6xl mx-auto">
-    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
+  <div class="max-w-7xl mx-auto space-y-8">
+    
+    <!-- HEADER -->
+    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
       <div>
         <div class="flex items-center gap-2">
-          <span class="bg-indigo-600 text-white p-1.5 rounded-lg"><i data-lucide="shield-check" class="w-4 h-4"></i></span>
-          <h1 class="text-2xl font-black text-slate-900">Dashboard Admin eSIM</h1>
+          <span class="bg-indigo-600 text-white p-2 rounded-xl"><i data-lucide="shield-check" class="w-5 h-5"></i></span>
+          <h1 class="text-2xl font-black text-slate-900">Dashboard Pengelola eSIM</h1>
         </div>
-        <p class="text-xs text-slate-500 mt-1">Real-time sinkronisasi pesanan dan verifikasi lunas.</p>
+        <p class="text-xs text-slate-500 mt-1">Kelola katalog layanan, pantau bukti pembayaran, dan kirim profil eSIM.</p>
       </div>
 
       <div class="flex items-center gap-3">
-        <!-- Indikator Heartbeat -->
-        <div class="flex items-center gap-2 px-3 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold">
+        <div class="flex items-center gap-2 px-3.5 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold">
           <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-          Toko Aktif (Siap Menerima Order)
+          Status: Toko Online (Admin Aktif)
         </div>
+      </div>
+    </div>
 
+    <!-- SEKSI 1: MANAJEMEN LAYANAN / PAKET ESIM -->
+    <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
+      <div class="flex justify-between items-center mb-6">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900">Manajemen Paket Layanan</h2>
+          <p class="text-xs text-slate-500">Tambah atau ubah paket yang tampil di halaman utama pembeli</p>
+        </div>
+        <button onclick="openProductModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-sm">
+          <i data-lucide="plus" class="w-4 h-4"></i> Tambah Layanan Baru
+        </button>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+          <thead class="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500">
+            <tr>
+              <th class="p-3">Bendera</th>
+              <th class="p-3">Nama Paket / Negara</th>
+              <th class="p-3">Operator</th>
+              <th class="p-3">Kuota Data</th>
+              <th class="p-3">Masa Aktif</th>
+              <th class="p-3">Harga</th>
+              <th class="p-3 text-center">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="products-table-body" class="divide-y divide-slate-100 font-medium"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SEKSI 2: TRANSAKSI MASUK & VERIFIKASI -->
+    <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
+      <div class="flex justify-between items-center mb-6">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900">Pesanan Masuk & Verifikasi</h2>
+          <p class="text-xs text-slate-500">Periksa bukti struk transfer dan kirim profil eSIM ke pembeli</p>
+        </div>
         <button onclick="loadOrders()" class="bg-slate-900 hover:bg-slate-800 text-white text-xs px-4 py-2.5 rounded-xl font-bold transition flex items-center gap-1.5">
           <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Refresh Data
         </button>
       </div>
-    </div>
 
-    <!-- Tabel Transaksi -->
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full text-left text-sm">
           <thead class="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500">
@@ -47,16 +84,72 @@
               <th class="p-4">Email Pembeli</th>
               <th class="p-4 text-center">Bukti Bayar</th>
               <th class="p-4 text-center">Status</th>
-              <th class="p-4 text-center">Aksi</th>
+              <th class="p-4 text-center">Aksi & Kirim eSIM</th>
             </tr>
           </thead>
           <tbody id="orders-table-body" class="divide-y divide-slate-100 font-medium"></tbody>
         </table>
       </div>
     </div>
+
   </div>
 
-  <!-- Modal Preview Foto Bukti Transfer -->
+  <!-- MODAL EDIT / TAMBAH PRODUK -->
+  <div id="product-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative">
+      <button onclick="closeProductModal()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-600">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <h3 id="modal-product-title" class="text-lg font-bold text-slate-900 mb-4">Tambah Paket eSIM</h3>
+      
+      <form onsubmit="saveProduct(event)" class="space-y-3 text-xs">
+        <input type="hidden" id="prod-id" />
+        
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Emoji Bendera</label>
+          <input type="text" id="prod-flag" placeholder="🇯🇵" required class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600" />
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Nama Negara / Paket</label>
+          <input type="text" id="prod-name" placeholder="Jepang (Japan)" required class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600" />
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Operator / Jaringan</label>
+          <input type="text" id="prod-network" placeholder="Softbank / Docomo 5G" required class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Kuota Data</label>
+            <input type="text" id="prod-quota" placeholder="10 GB High Speed" required class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600" />
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Masa Aktif</label>
+            <input type="text" id="prod-duration" placeholder="7 Hari" required class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Harga (Angka saja)</label>
+          <input type="number" id="prod-price" placeholder="145000" required class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600" />
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Label / Badge (Opsional)</label>
+          <input type="text" id="prod-badge" placeholder="Best Seller / Unlimited" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600" />
+        </div>
+
+        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition text-sm mt-4">
+          Simpan Layanan
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL PREVIEW BUKTI TRANSFER -->
   <div id="image-modal" class="fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-sm hidden items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl relative text-center">
       <button onclick="closeImageModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
@@ -75,23 +168,128 @@
     const FIREBASE_DB_URL = "https://esim-store-d7580-default-rtdb.europe-west1.firebasedatabase.app";
 
     let currentOrders = [];
+    let currentProducts = {};
 
-    // Fungsi Pengirim Heartbeat Admin Aktif ke Firebase (Setiap 3 Detik)
+    // 1. Heartbeat Online Admin
     async function sendAdminHeartbeat() {
       try {
         await fetch(`${FIREBASE_DB_URL}/admin_heartbeat.json`, {
           method: 'PUT',
           body: JSON.stringify(Date.now())
         });
-      } catch (err) {
-        console.error('Gagal mengirim heartbeat:', err);
-      }
+      } catch (err) { console.error(err); }
     }
-
-    // Kirim heartbeat berkala
     setInterval(sendAdminHeartbeat, 3000);
     sendAdminHeartbeat();
 
+    // 2. Load & Tampilkan Produk Layanan
+    async function loadProducts() {
+      try {
+        const res = await fetch(`${FIREBASE_DB_URL}/products.json`);
+        currentProducts = await res.json() || {};
+        const tbody = document.getElementById('products-table-body');
+        tbody.innerHTML = '';
+
+        if (Object.keys(currentProducts).length === 0) {
+          // Inisialisasi default 3 produk jika database produk masih kosong
+          await initializeDefaultProducts();
+          return;
+        }
+
+        Object.keys(currentProducts).forEach(key => {
+          const p = currentProducts[key];
+          tbody.innerHTML += `
+            <tr class="hover:bg-slate-50 transition">
+              <td class="p-3 text-2xl">${p.flag}</td>
+              <td class="p-3 font-bold text-slate-800">${p.name}</td>
+              <td class="p-3 text-slate-500">${p.network}</td>
+              <td class="p-3 font-semibold">${p.quota}</td>
+              <td class="p-3 text-slate-600">${p.duration}</td>
+              <td class="p-3 font-bold text-indigo-600">Rp ${Number(p.price).toLocaleString('id-ID')}</td>
+              <td class="p-3 text-center space-x-2">
+                <button onclick="editProduct('${key}')" class="text-indigo-600 hover:text-indigo-800 text-xs font-bold">Edit</button>
+                <button onclick="deleteProduct('${key}')" class="text-rose-600 hover:text-rose-800 text-xs font-bold">Hapus</button>
+              </td>
+            </tr>
+          `;
+        });
+      } catch (e) { console.error(e); }
+    }
+
+    async function initializeDefaultProducts() {
+      const defaults = {
+        "p1": { flag: "🇯🇵", name: "Jepang (Japan)", network: "Softbank / Docomo 5G", quota: "10 GB High Speed", duration: "7 Hari", price: 145000, badge: "Best Seller" },
+        "p2": { flag: "🇸🇬", name: "Singapura", network: "Singtel 5G", quota: "Unlimited (FUP 2GB/hr)", duration: "5 Hari", price: 85000, badge: "Unlimited" },
+        "p3": { flag: "🇪🇺", name: "Eropa (33 Negara)", network: "Vodafone Multi-Carrier", quota: "20 GB Total", duration: "30 Hari", price: 320000, badge: "Multi-Negara" }
+      };
+      await fetch(`${FIREBASE_DB_URL}/products.json`, { method: 'PUT', body: JSON.stringify(defaults) });
+      loadProducts();
+    }
+
+    function openProductModal() {
+      document.getElementById('modal-product-title').innerText = "Tambah Paket eSIM";
+      document.getElementById('prod-id').value = '';
+      document.getElementById('prod-flag').value = '';
+      document.getElementById('prod-name').value = '';
+      document.getElementById('prod-network').value = '';
+      document.getElementById('prod-quota').value = '';
+      document.getElementById('prod-duration').value = '';
+      document.getElementById('prod-price').value = '';
+      document.getElementById('prod-badge').value = '';
+      document.getElementById('product-modal').classList.remove('hidden');
+      document.getElementById('product-modal').classList.add('flex');
+    }
+
+    function closeProductModal() {
+      document.getElementById('product-modal').classList.add('hidden');
+      document.getElementById('product-modal').classList.remove('flex');
+    }
+
+    function editProduct(key) {
+      const p = currentProducts[key];
+      document.getElementById('modal-product-title').innerText = "Edit Paket eSIM";
+      document.getElementById('prod-id').value = key;
+      document.getElementById('prod-flag').value = p.flag;
+      document.getElementById('prod-name').value = p.name;
+      document.getElementById('prod-network').value = p.network;
+      document.getElementById('prod-quota').value = p.quota;
+      document.getElementById('prod-duration').value = p.duration;
+      document.getElementById('prod-price').value = p.price;
+      document.getElementById('prod-badge').value = p.badge || '';
+      document.getElementById('product-modal').classList.remove('hidden');
+      document.getElementById('product-modal').classList.add('flex');
+    }
+
+    async function saveProduct(e) {
+      e.preventDefault();
+      const id = document.getElementById('prod-id').value || 'p_' + Date.now();
+      const productData = {
+        flag: document.getElementById('prod-flag').value,
+        name: document.getElementById('prod-name').value,
+        network: document.getElementById('prod-network').value,
+        quota: document.getElementById('prod-quota').value,
+        duration: document.getElementById('prod-duration').value,
+        price: Number(document.getElementById('prod-price').value),
+        badge: document.getElementById('prod-badge').value
+      };
+
+      await fetch(`${FIREBASE_DB_URL}/products/${id}.json`, {
+        method: 'PUT',
+        body: JSON.stringify(productData)
+      });
+
+      closeProductModal();
+      loadProducts();
+    }
+
+    async function deleteProduct(id) {
+      if (confirm('Yakin ingin menghapus paket layanan ini dari katalog?')) {
+        await fetch(`${FIREBASE_DB_URL}/products/${id}.json`, { method: 'DELETE' });
+        loadProducts();
+      }
+    }
+
+    // 3. Load & Kelola Pesanan
     async function loadOrders() {
       try {
         const res = await fetch(`${FIREBASE_DB_URL}/orders.json`);
@@ -130,21 +328,72 @@
                   ${o.status}
                 </span>
               </td>
-              <td class="p-4 text-center whitespace-nowrap">
+              <td class="p-4 text-center whitespace-nowrap space-x-2">
                 ${!isPaid 
-                  ? `<button onclick="verifyOrder('${o.order_id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-1.5 rounded-lg transition shadow-sm">
+                  ? `<button onclick="verifyOrder('${o.order_id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-sm">
                       Verifikasi Lunas
                      </button>` 
-                  : `<span class="text-xs text-emerald-600 font-bold inline-flex items-center gap-1"><i data-lucide="check" class="w-3.5 h-3.5"></i> Selesai</span>`
+                  : `<button onclick="openEmailDraft('${o.email}', '${o.order_id}', '${o.package_name}')" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition inline-flex items-center gap-1 shadow-sm">
+                      <i data-lucide="mail" class="w-3.5 h-3.5"></i> Kirim Email eSIM
+                     </button>`
                 }
+                <button onclick="deleteOrder('${o.order_id}')" class="text-rose-500 hover:text-rose-700 text-xs font-bold px-2 py-1">
+                  Hapus
+                </button>
               </td>
             </tr>
           `;
         });
         lucide.createIcons();
-      } catch (err) {
-        console.error(err);
+      } catch (err) { console.error(err); }
+    }
+
+    // 4. Verifikasi & Hapus Order
+    async function verifyOrder(orderId) {
+      await fetch(`${FIREBASE_DB_URL}/orders/${orderId}/status.json`, {
+        method: 'PUT',
+        body: JSON.stringify('PAID')
+      });
+      loadOrders();
+    }
+
+    async function deleteOrder(orderId) {
+      if (confirm(`Hapus data transaksi ${orderId}?`)) {
+        await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, { method: 'DELETE' });
+        loadOrders();
       }
+    }
+
+    // 5. Template Pengiriman Email Otomatis (mailto)
+    function openEmailDraft(email, orderId, packageName) {
+      const subject = encodeURIComponent(`[eSIMGo] Profil QR Code eSIM Anda Siap Digunakan - Order #${orderId}`);
+      const body = encodeURIComponent(
+`Halo,
+
+Terima kasih atas pembayaran Anda untuk pesanan eSIM di eSIMGo / Rifki Cell!
+
+Detail Pesanan:
+- No. Order: #${orderId}
+- Paket Layanan: ${packageName}
+- Status: SUDAH LUNAS & AKTIF
+
+Panduan Pemasangan eSIM:
+1. Hubungkan smartphone Anda ke jaringan Wi-Fi / Internet stabil.
+2. Buka menu Pengaturan HP (Settings) > Seluler (Cellular) / Jaringan Seluler.
+3. Pilih "Tambah Paket Seluler" (Add eSIM).
+4. Scan gambar QR Code profil eSIM yang kami lampirkan di attachment email ini.
+5. Selesaikan konfigurasi profil dan beri nama label (contoh: "eSIM Roaming").
+
+*Catatan Penting: Aktifkan opsi "Data Roaming" pada profil eSIM ini saat Anda telah mendarat di negara tujuan.
+
+(Lampirkan file gambar QR Code profil eSIM pembeli sebelum menekan tombol Kirim)
+
+Salam hangat,
+eSIMGo / Rifki Cell Support`
+      );
+
+      // Buka aplikasi email otomatis dengan data terisi lengkap
+      window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
     }
 
     function viewImage(index) {
@@ -159,15 +408,9 @@
       document.getElementById('image-modal').classList.remove('flex');
     }
 
-    async function verifyOrder(orderId) {
-      await fetch(`${FIREBASE_DB_URL}/orders/${orderId}/status.json`, {
-        method: 'PUT',
-        body: JSON.stringify('PAID')
-      });
-      loadOrders();
-    }
-
-    setInterval(loadOrders, 2000);
+    // Interval Auto-load
+    setInterval(loadOrders, 3000);
+    loadProducts();
     loadOrders();
   </script>
 </body>
