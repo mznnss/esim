@@ -10,7 +10,7 @@ export default async function handler(req, res) {
 
   const BOT_TOKEN = "8636838151:AAFpbytiio0xBSqW7hrqddhfLf3e2XwHrpY";
   
-  // Daftar target notifikasi: Grup + Japri Admin 1 & Admin 2
+  // Daftar target: Grup Telegram & Japri Admin 1 / Admin 2
   const ALL_RECIPIENTS = [
     "-1004352073054", // Grup Telegram
     "8731786333",     // Japri Admin 1
@@ -70,7 +70,7 @@ _Status transaksi telah diperbarui menjadi selesai._`;
   try {
     const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
     
-    // Broadcast ke Grup dan kedua Japri Admin
+    // Broadcast ke Grup dan Japri Admin
     const sendPromises = ALL_RECIPIENTS.map(chatId =>
       fetch(telegramUrl, {
         method: 'POST',
