@@ -11,63 +11,95 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { email, orderId, packageName } = req.body;
+  const { email, orderId, packageName, qrCodeBase64, customNotes } = req.body;
 
   if (!email || !orderId) {
     return res.status(400).json({ error: 'Email dan Order ID wajib diisi' });
   }
 
-  // Mengambil API Key dari Environment Variable Vercel
   const apiKey = process.env.RESEND_API_KEY;
 
   if (!apiKey) {
-    return res.status(500).json({ error: 'RESEND_API_KEY belum disetel di Vercel Settings' });
+    return res.status(500).json({ error: 'RESEND_API_KEY belum disetel di Vercel' });
+  }
+
+  // Siapkan lampiran jika admin mengupload file QR/PDF
+  const attachments = [];
+  if (qrCodeBase64) {
+    const isPdf = qrCodeBase64.startsWith('data:application/pdf');
+    const filename = isPdf ? `eSIM-Profile-${orderId}.pdf` : `eSIM-QRCode-${orderId}.png`;
+    const cleanBase64 = qrCodeBase64.split(',')[1] || qrCodeBase64;
+
+    attachments.push({
+      filename: filename,
+      content: cleanBase64
+    });
   }
 
   try {
+    const payload = {
+      from: 'eSIMGo Official <onboarding@resend.dev>',
+      to: [email],
+      subject: `[eSIMGo] Profil QR Code eSIM Anda Siap Digunakan - Order #${orderId}`,
+      html: `
+        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <h1 style="color: #4f46e5; margin: 0; font-size: 24px;">eSIM<span style="color: #0f172a;">Go</span></h1>
+            <p style="color: #64748b; font-size: 13px; margin-top: 5px;">Konfirmasi Aktivasi & QR Code eSIM Roaming</p>
+          </div>
+
+          <div style="background-color: #f8fafc; border-radius: 12px; padding: 15px; margin-bottom: 20px; font-size: 14px;">
+            <p style="margin: 4px 0;"><b>No. Order:</b> #${orderId}</p>
+            <p style="margin: 4px 0;"><b>Paket Layanan:</b> ${packageName}</p>
+            <p style="margin: 4px 0;"><b>Status Pembayaran:</b> <span style="color: #16a34a; font-weight: bold;">LUNAS</span></p>
+          </div>
+
+          ${qrCodeBase64 && !qrCodeBase64.startsWith('data:application/pdf') ? `
+            <div style="text-align: center; margin: 25px 0; background: #faf5ff; padding: 20px; border-radius: 12px; border: 1px dashed #c084fc;">
+              <p style="font-weight: bold; color: #6b21a8; font-size: 14px; margin-top: 0; margin-bottom: 12px;">QR Code Aktivasi eSIM Anda:</p>
+              <img src="${qrCodeBase64}" alt="QR Code eSIM" style="width: 220px; height: 220px; border-radius: 10px; border: 1px solid #e2e8f0; background: #ffffff;" />
+              <p style="font-size: 11px; color: #7e22ce; margin-top: 8px; margin-bottom: 0;">Scan QR di atas menggunakan menu Seluler di pengaturan HP Anda</p>
+            </div>
+          ` : ''}
+
+          ${customNotes ? `
+            <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 12px; margin: 15px 0; font-size: 13px; color: #1e40af;">
+              <b>Catatan dari Admin:</b><br/>${customNotes}
+            </div>
+          ` : ''}
+
+          <h3 style="color: #0f172a; font-size: 16px; margin-bottom: 10px;">Panduan Pemasangan eSIM:</h3>
+          <ol style="color: #334155; font-size: 13px; line-height: 1.6; padding-left: 20px;">
+            <li>Pastikan smartphone Anda terhubung ke jaringan Wi-Fi / Internet yang stabil.</li>
+            <li>Buka menu <b>Pengaturan HP (Settings) &gt; Seluler / Jaringan Seluler</b>.</li>
+            <li>Pilih menu <b>Tambah Paket Seluler (Add eSIM)</b>.</li>
+            <li>Pilih opsi Scan QR Code, lalu arahkan kamera ke barcode eSIM (tertera di email/lampiran file).</li>
+            <li>Selesaikan proses konfigurasi dan beri nama label (misal: <i>eSIM Roaming</i>).</li>
+          </ol>
+
+          <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 12px; margin: 20px 0; font-size: 12px; color: #991b1b;">
+            <b>Perhatian:</b> Harap aktifkan fitur <b>Data Roaming</b> pada profil eSIM ini saat Anda telah mendarat di negara tujuan.
+          </div>
+
+          <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+          <p style="text-align: center; color: #94a3b8; font-size: 11px; margin: 0;">
+            © 2026 eSIMGo • Rifki Cell. Email ini dikirim otomatis oleh sistem.
+          </p>
+        </div>
+      `
+    };
+
+    if (attachments.length > 0) {
+      payload.attachments = attachments;
+    }
+
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        from: 'eSIMGo Official <onboarding@resend.dev>',
-        to: [email],
-        subject: `[eSIMGo] Profil QR Code eSIM Anda Siap Digunakan - Order #${orderId}`,
-        html: `
-          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
-            <div style="text-align: center; margin-bottom: 20px;">
-              <h1 style="color: #4f46e5; margin: 0; font-size: 24px;">eSIM<span style="color: #0f172a;">Go</span></h1>
-              <p style="color: #64748b; font-size: 13px; margin-top: 5px;">Konfirmasi Aktivasi eSIM Roaming</p>
-            </div>
-
-            <div style="background-color: #f8fafc; border-radius: 12px; padding: 15px; margin-bottom: 20px; font-size: 14px;">
-              <p style="margin: 4px 0;"><b>No. Order:</b> #${orderId}</p>
-              <p style="margin: 4px 0;"><b>Paket Layanan:</b> ${packageName}</p>
-              <p style="margin: 4px 0;"><b>Status Pembayaran:</b> <span style="color: #16a34a; font-weight: bold;">LUNAS</span></p>
-            </div>
-
-            <h3 style="color: #0f172a; font-size: 16px; margin-bottom: 10px;">Panduan Pemasangan eSIM:</h3>
-            <ol style="color: #334155; font-size: 13px; line-height: 1.6; padding-left: 20px;">
-              <li>Pastikan smartphone Anda terhubung ke jaringan Wi-Fi / Internet yang stabil.</li>
-              <li>Buka menu <b>Pengaturan HP (Settings) &gt; Seluler / Jaringan Seluler</b>.</li>
-              <li>Pilih menu <b>Tambah Paket Seluler (Add eSIM)</b>.</li>
-              <li>Pilih opsi Scan QR Code, lalu arahkan kamera ke barcode eSIM Anda.</li>
-              <li>Selesaikan proses konfigurasi profil dan beri nama label (misal: <i>eSIM Roaming</i>).</li>
-            </ol>
-
-            <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 12px; margin: 20px 0; font-size: 12px; color: #991b1b;">
-              <b>Perhatian:</b> Harap aktifkan fitur <b>Data Roaming</b> pada profil eSIM ini saat Anda telah mendarat di negara tujuan.
-            </div>
-
-            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-            <p style="text-align: center; color: #94a3b8; font-size: 11px; margin: 0;">
-              © 2026 eSIMGo • Rifki Cell. Email ini dikirim otomatis oleh sistem.
-            </p>
-          </div>
-        `
-      })
+      body: JSON.stringify(payload)
     });
 
     const data = await response.json();
