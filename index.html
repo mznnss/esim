@@ -3,24 +3,21 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>eSIMGo - Koneksi Global Instan & Terpercaya</title>
+  <title>eSIMGo - Koneksi Global Instan Tanpa Roaming Fisik</title>
   <!-- Tailwind CSS & Lucide Icons -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
   <style>
-    body {
-      font-family: 'Plus Jakarta Sans', sans-serif;
-    }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-900 antialiased min-h-screen flex flex-col justify-between">
 
-  <!-- ================= NAVBAR ================= -->
-  <nav class="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200">
+  <!-- NAVBAR -->
+  <nav class="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
       <div class="flex items-center gap-2">
         <div class="bg-indigo-600 text-white p-2 rounded-xl">
@@ -29,23 +26,23 @@
         <span class="font-extrabold text-xl tracking-tight text-slate-900">eSIM<span class="text-indigo-600">Go</span></span>
       </div>
 
-      <div class="hidden md:flex items-center gap-8 font-medium text-sm text-slate-600">
+      <div class="hidden md:flex items-center gap-8 font-semibold text-sm text-slate-600">
         <a href="#destinasi" class="hover:text-indigo-600 transition">Destinasi</a>
         <a href="#cara-kerja" class="hover:text-indigo-600 transition">Cara Kerja</a>
-        <a href="#keunggulan" class="hover:text-indigo-600 transition">Keunggulan</a>
+        <a href="#faq" class="hover:text-indigo-600 transition">Bantuan</a>
       </div>
 
       <div class="flex items-center gap-2">
         <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-        <span class="text-xs font-bold text-slate-600">Layanan Aktif 24 Jam</span>
+        <span class="text-xs font-bold text-slate-600">Server Aktif</span>
       </div>
     </div>
   </nav>
 
-  <!-- ================= HERO SECTION ================= -->
-  <header class="relative overflow-hidden pt-12 pb-16 bg-gradient-to-b from-indigo-50/50 via-white to-slate-50 border-b border-slate-200/60">
-    <div class="max-w-5xl mx-auto px-4 text-center">
-      <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700 mb-6">
+  <!-- HERO SECTION -->
+  <header class="relative overflow-hidden pt-12 pb-16 bg-gradient-to-b from-indigo-50/60 via-white to-slate-50 border-b border-slate-200/60 text-center px-4">
+    <div class="max-w-5xl mx-auto">
+      <span class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700 mb-6">
         <i data-lucide="globe-2" class="w-3.5 h-3.5"></i> Internet Cepat di 150+ Negara
       </span>
       <h1 class="text-4xl sm:text-6xl font-extrabold text-slate-900 tracking-tight leading-tight">
@@ -53,7 +50,7 @@
         <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600">Tanpa Ganti Kartu Fisik</span>
       </h1>
       <p class="mt-4 text-base sm:text-lg text-slate-600 max-w-2xl mx-auto">
-        Beli paket eSIM roaming, bayar instan via QRIS, dan profil eSIM langsung dikirim ke email Anda setelah verifikasi.
+        Beli paket eSIM roaming, bayar instan via QRIS Rifki Cell, upload bukti, dan terima profil eSIM langsung ke email Anda.
       </p>
 
       <!-- Search Box Filter -->
@@ -64,7 +61,7 @@
             type="text" 
             id="search-input"
             placeholder="Cari negara tujuan (cth: Jepang, Singapura, Eropa)..."
-            class="w-full pl-12 pr-4 py-4 rounded-2xl bg-white border border-slate-200 shadow-lg shadow-slate-200/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 text-sm"
+            class="w-full pl-12 pr-4 py-4 rounded-2xl bg-white border border-slate-200 shadow-lg shadow-slate-200/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 text-sm font-medium"
             onkeyup="filterDestinations()"
           />
         </div>
@@ -72,14 +69,14 @@
     </div>
   </header>
 
-  <!-- ================= KATALOG DESTINASI ================= -->
-  <main id="destinasi" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex-grow">
+  <!-- KATALOG DESTINASI -->
+  <main id="destinasi" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex-grow w-full">
     <div class="mb-8">
       <h2 class="text-2xl font-bold text-slate-900">Pilihan Paket Terpopuler</h2>
       <p class="text-slate-500 text-sm">Pilih kuota dan masa aktif sesuai durasi perjalanan Anda</p>
     </div>
 
-    <!-- Product Grid -->
+    <!-- Grid Produk -->
     <div id="product-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       
       <!-- Card 1: Jepang -->
@@ -90,7 +87,7 @@
               <span class="text-4xl">🇯🇵</span>
               <div>
                 <h3 class="font-bold text-lg text-slate-900">Jepang (Japan)</h3>
-                <p class="text-xs text-slate-500">Jaringan Softbank / Docomo 5G</p>
+                <p class="text-xs text-slate-500">Softbank / Docomo 5G</p>
               </div>
             </div>
             <span class="bg-indigo-50 text-indigo-700 text-xs font-bold px-2.5 py-1 rounded-lg">Best Seller</span>
@@ -131,7 +128,7 @@
               <span class="text-4xl">🇸🇬</span>
               <div>
                 <h3 class="font-bold text-lg text-slate-900">Singapura</h3>
-                <p class="text-xs text-slate-500">Jaringan Singtel 5G</p>
+                <p class="text-xs text-slate-500">Singtel 5G</p>
               </div>
             </div>
             <span class="bg-emerald-50 text-emerald-700 text-xs font-bold px-2.5 py-1 rounded-lg">Unlimited</span>
@@ -208,44 +205,44 @@
     </div>
   </main>
 
-  <!-- ================= CARA KERJA ================= -->
-  <section id="cara-kerja" class="bg-white py-16 border-t border-slate-200">
+  <!-- CARA KERJA -->
+  <section id="cara-kerja" class="bg-white py-14 border-t border-slate-200">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-12">
-        <h2 class="text-2xl font-bold text-slate-900">3 Langkah Mudah Pakai eSIM</h2>
-        <p class="text-slate-500 text-sm mt-1">Tanpa perlu registrasi KTP/Paspor fisik yang rumit</p>
+      <div class="text-center mb-10">
+        <h2 class="text-2xl font-bold text-slate-900">3 Langkah Mudah Pembelian</h2>
+        <p class="text-slate-500 text-sm mt-1">Tanpa perlu login dan tanpa ribet</p>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div class="text-center p-6 rounded-3xl bg-slate-50 border border-slate-100">
           <div class="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-4 font-black">1</div>
-          <h3 class="font-bold text-slate-800 mb-2">Pilih & Bayar QRIS</h3>
-          <p class="text-sm text-slate-500">Pilih paket negara, isi email, dan lakukan transfer scan QRIS toko kami.</p>
+          <h3 class="font-bold text-slate-800 mb-1">Pilih Paket & Scan QRIS</h3>
+          <p class="text-xs text-slate-500">Pilih negara tujuan, isi email Anda, lalu bayar melalui QRIS Rifki Cell.</p>
         </div>
 
         <div class="text-center p-6 rounded-3xl bg-slate-50 border border-slate-100">
           <div class="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-4 font-black">2</div>
-          <h3 class="font-bold text-slate-800 mb-2">Verifikasi Instan</h3>
-          <p class="text-sm text-slate-500">Sistem akan otomatis mendeteksi ketika admin memverifikasi transfer Anda.</p>
+          <h3 class="font-bold text-slate-800 mb-1">Unggah Bukti Bayar</h3>
+          <p class="text-xs text-slate-500">Upload screenshot/foto struk transfer Anda langsung di dalam modal website.</p>
         </div>
 
         <div class="text-center p-6 rounded-3xl bg-slate-50 border border-slate-100">
           <div class="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-4 font-black">3</div>
-          <h3 class="font-bold text-slate-800 mb-2">Terima QR di Email</h3>
-          <p class="text-sm text-slate-500">Scan QR Code dari email Anda di pengaturan ponsel dan internet langsung aktif!</p>
+          <h3 class="font-bold text-slate-800 mb-1">Terima eSIM di Email</h3>
+          <p class="text-xs text-slate-500">Setelah admin memverifikasi, sistem seketika sukses & eSIM siap dikirim ke email.</p>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ================= MODAL TRANSAKSI REAL-TIME ================= -->
+  <!-- MODAL TRANSAKSI (MULTI-PHASE) -->
   <div id="checkout-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative max-h-[92vh] overflow-y-auto">
       <button onclick="closeModal()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-600">
         <i data-lucide="x" class="w-5 h-5"></i>
       </button>
 
-      <!-- PHASE 1: FORM INPUT EMAIL -->
+      <!-- PHASE 1: FORM EMAIL -->
       <div id="phase-form">
         <h3 class="text-lg font-bold text-slate-900 mb-1">Konfirmasi Pesanan</h3>
         <p class="text-xs text-slate-500 mb-4">Profil eSIM akan dikirimkan ke alamat email ini.</p>
@@ -262,7 +259,7 @@
           </div>
 
           <div class="border-t border-slate-100 pt-3 flex justify-between items-center text-sm">
-            <span class="font-medium text-slate-600">Total Tagihan:</span>
+            <span class="text-slate-600 font-medium">Total Tagihan:</span>
             <span id="m-total" class="font-extrabold text-indigo-600 text-lg">Rp 0</span>
           </div>
 
@@ -272,69 +269,112 @@
         </div>
       </div>
 
-      <!-- PHASE 2: TAMPILAN QRIS & MENUNGGU VERIFIKASI ADMIN -->
+      <!-- PHASE 2: DISPLAY QRIS RIFKI CELL -->
       <div id="phase-qris" class="hidden text-center">
-        <div class="inline-flex items-center gap-2 px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-semibold mb-3">
-          <span class="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span> Menunggu Pembayaran...
+        <div class="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-semibold mb-2">
+          <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span> Scan QRIS & Selesaikan Pembayaran
+        </div>
+        
+        <p class="text-xs text-slate-400 mt-1">Order ID: <span id="qris-order-id" class="font-mono font-bold text-slate-800"></span></p>
+
+        <!-- Container Gambar QRIS Asli -->
+        <div class="bg-white border border-slate-200 p-2.5 rounded-2xl shadow-sm inline-block my-2 max-w-[240px]">
+          <div class="text-center mb-1">
+            <span class="text-xs font-extrabold text-slate-800 block">Rifki Cell</span>
+            <span class="text-[10px] text-slate-400 font-mono">NMID: ID1024311428048</span>
+          </div>
+          
+          <img src="qris.jpg" alt="QRIS Rifki Cell" class="w-full h-auto rounded-xl mx-auto border border-slate-100" onerror="this.src='https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=RIFKI_CELL_QRIS'" />
+          
+          <div class="mt-1 text-[10px] font-bold text-blue-600">
+            DANA Bisnis • Semua Pembayaran
+          </div>
         </div>
 
-        <h3 class="text-lg font-bold text-slate-900">Scan QRIS untuk Bayar</h3>
-        <p class="text-xs text-slate-500 mb-3">Order ID: <span id="qris-order-id" class="font-mono font-bold text-slate-800"></span></p>
-
-        <!-- QRIS Image Display -->
-        <div class="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl inline-block mb-3">
-          <!-- Ganti URL di bawah dengan gambar QRIS toko Anda jika ada -->
-          <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=QRIS_STATIS_TOKO" alt="QRIS" class="w-44 h-44 mx-auto rounded-xl bg-white p-1" />
+        <div class="bg-indigo-50/60 rounded-xl p-2.5 text-xs text-indigo-900 mb-4">
+          Total Transfer: <b id="qris-total-amount" class="text-indigo-700 font-bold text-sm"></b>
         </div>
 
-        <div class="bg-indigo-50/60 rounded-xl p-3 text-xs text-indigo-900 mb-2">
-          Total Transfer: <b id="qris-total-amount" class="text-indigo-700"></b><br>
-          Bisa gunakan BCA, Mandiri, GoPay, OVO, Dana, ShopeePay.
-        </div>
-
-        <p class="text-[11px] text-slate-400">Layar ini akan <b>otomatis berganti ke sukses</b> begitu pembayaran Anda diverifikasi oleh sistem.</p>
+        <button onclick="showProofUpload()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl transition text-sm flex items-center justify-center gap-2 shadow-sm">
+          <i data-lucide="upload-cloud" class="w-4 h-4"></i> Saya Sudah Bayar (Upload Bukti)
+        </button>
       </div>
 
-      <!-- PHASE 3: NOTIFIKASI SUKSES REAL-TIME -->
+      <!-- PHASE 3: UPLOAD BUKTI TRANSFER -->
+      <div id="phase-upload" class="hidden text-center">
+        <h3 class="text-lg font-bold text-slate-900 mb-1">Kirim Bukti Pembayaran</h3>
+        <p class="text-xs text-slate-500 mb-4">Upload screenshot struk transfer m-banking / e-wallet Anda.</p>
+
+        <div class="space-y-4">
+          <div class="border-2 border-dashed border-slate-200 rounded-2xl p-4 text-center hover:border-indigo-400 transition bg-slate-50 cursor-pointer" onclick="document.getElementById('proof-file-input').click()">
+            <i data-lucide="image" class="w-8 h-8 text-slate-400 mx-auto mb-2"></i>
+            <span id="proof-file-name" class="text-xs font-semibold text-slate-600 block">Pilih File Foto Struk</span>
+            <span class="text-[10px] text-slate-400">Format: JPG, PNG (Maks 10MB)</span>
+            <input type="file" id="proof-file-input" accept="image/*" class="hidden" onchange="previewFile()" />
+          </div>
+
+          <img id="image-preview" src="" class="hidden w-36 h-36 object-cover mx-auto rounded-xl border border-slate-200 shadow-sm" />
+
+          <button onclick="submitProof()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl transition text-sm">
+            Kirim Bukti Pembayaran
+          </button>
+        </div>
+      </div>
+
+      <!-- PHASE 4: MENUNGGU VERIFIKASI ADMIN -->
+      <div id="phase-waiting" class="hidden text-center py-6">
+        <div class="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-3 animate-bounce">
+          <i data-lucide="clock" class="w-8 h-8"></i>
+        </div>
+        <h3 class="text-lg font-bold text-slate-900 mb-1">Bukti Berhasil Terkirim!</h3>
+        <p class="text-xs text-slate-500 mb-4">Admin Rifki Cell sedang memverifikasi saldo pembayaran Anda.</p>
+        <div class="text-[11px] bg-slate-50 border border-slate-200 p-3 rounded-xl text-slate-500">
+          Tetap di layar ini. Tampilan akan <b>otomatis berganti ke sukses</b> begitu diverifikasi.
+        </div>
+      </div>
+
+      <!-- PHASE 5: TRANSAKSI SELESAI & BERHASIL -->
       <div id="phase-success" class="hidden text-center py-4">
-        <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+        <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3">
           <i data-lucide="check-circle-2" class="w-10 h-10"></i>
         </div>
         <h3 class="text-2xl font-black text-slate-900 mb-1">Transaksi Berhasil!</h3>
-        <p class="text-sm text-slate-600 mb-5">
-          Pembayaran Anda telah diverifikasi. Profil QR eSIM segera dikirimkan ke:
-          <br><b id="success-email-display" class="text-indigo-600 font-bold"></b>
+        <p class="text-xs text-slate-600 mb-4">
+          Pembayaran Anda telah diverifikasi lunas. Profil eSIM sedang dikirim ke:
+          <br><b id="success-email-display" class="text-indigo-600 font-bold text-sm"></b>
         </p>
 
         <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl text-left text-xs text-slate-500 space-y-1 mb-5">
-          <p>• Silakan periksa folder <b>Inbox</b> atau <b>Spam</b> email Anda.</p>
-          <p>• Proses pengiriman manual membutuhkan waktu 5-15 menit.</p>
+          <p>• Silakan cek folder <b>Inbox</b> atau <b>Spam</b> email Anda.</p>
+          <p>• Proses pengiriman berlangsung dalam 5-15 menit.</p>
         </div>
 
-        <button onclick="closeModal()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl text-sm transition">
-          Tutup
+        <button onclick="closeModal()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 rounded-xl text-sm transition">
+          Selesai
         </button>
       </div>
 
     </div>
   </div>
 
-  <!-- ================= FOOTER ================= -->
-  <footer class="bg-white border-t border-slate-200 py-6">
-    <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-400">
-      &copy; 2026 eSIMGo Indonesia. Seluruh hak cipta dilindungi.
-    </div>
+  <!-- FOOTER -->
+  <footer class="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-400">
+    &copy; 2026 eSIMGo • Rifki Cell (DANA Bisnis). Seluruh Hak Cipta Dilindungi.
   </footer>
 
-  <!-- ================= LOGIC JAVASCRIPT ================= -->
+  <!-- LOGIKA FRONTEND JAVASCRIPT -->
   <script>
     lucide.createIcons();
 
     let currentPrice = 0;
     let currentPackage = '';
+    let currentOrderId = '';
+    let currentEmail = '';
+    let base64Proof = null;
     let pollingTimer = null;
 
-    // Filter Pencarian Destinasi
+    const modal = document.getElementById('checkout-modal');
+
     function filterDestinations() {
       const query = document.getElementById('search-input').value.toLowerCase();
       const cards = document.querySelectorAll('.product-card');
@@ -345,23 +385,14 @@
       });
     }
 
-    // Modal Controls
-    const modal = document.getElementById('checkout-modal');
-    const phaseForm = document.getElementById('phase-form');
-    const phaseQris = document.getElementById('phase-qris');
-    const phaseSuccess = document.getElementById('phase-success');
-
     function openOrderModal(packageName, price) {
       currentPackage = packageName;
       currentPrice = price;
-
       document.getElementById('m-package').value = packageName;
       document.getElementById('m-total').innerText = 'Rp ' + price.toLocaleString('id-ID');
 
-      // Reset modal state
-      phaseForm.classList.remove('hidden');
-      phaseQris.classList.add('hidden');
-      phaseSuccess.classList.add('hidden');
+      hideAllPhases();
+      document.getElementById('phase-form').classList.remove('hidden');
 
       modal.classList.remove('hidden');
       modal.classList.add('flex');
@@ -373,45 +404,87 @@
       modal.classList.remove('flex');
     }
 
-    // Submit Form & Tampilkan QRIS
+    function hideAllPhases() {
+      ['phase-form', 'phase-qris', 'phase-upload', 'phase-waiting', 'phase-success'].forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+      });
+    }
+
     async function proceedToPayment() {
-      const email = document.getElementById('m-email').value.trim();
-      if (!email || !email.includes('@')) {
-        alert('Harap masukkan alamat email yang valid!');
+      currentEmail = document.getElementById('m-email').value.trim();
+      if (!currentEmail || !currentEmail.includes('@')) {
+        alert('Harap masukkan email yang valid!');
         return;
       }
 
       try {
-        const response = await fetch('http://localhost:3000/api/order', {
+        const res = await fetch('http://localhost:3000/api/order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            package_name: currentPackage,
-            price: currentPrice,
-            email: email
-          })
+          body: JSON.stringify({ package_name: currentPackage, price: currentPrice, email: currentEmail })
         });
-
-        const data = await response.json();
+        const data = await res.json();
 
         if (data.success) {
-          // Ganti ke tampilan QRIS
-          phaseForm.classList.add('hidden');
-          phaseQris.classList.remove('hidden');
-
-          document.getElementById('qris-order-id').innerText = data.order.order_id;
+          currentOrderId = data.order.order_id;
+          hideAllPhases();
+          document.getElementById('phase-qris').classList.remove('hidden');
+          document.getElementById('qris-order-id').innerText = currentOrderId;
           document.getElementById('qris-total-amount').innerText = 'Rp ' + currentPrice.toLocaleString('id-ID');
 
-          // Mulai polling cek status dari server
-          startPolling(data.order.order_id, email);
+          // Mulai memantau perubahan status verifikasi
+          startPolling(currentOrderId);
         }
       } catch (err) {
-        alert('Gagal menghubungi server. Pastikan backend server.js sudah berjalan!');
+        alert('Gagal membuat transaksi. Pastikan server.js sudah aktif!');
       }
     }
 
-    // Real-Time Polling: Cek apakah Admin sudah klik "Verifikasi Lunas"
-    function startPolling(orderId, email) {
+    function showProofUpload() {
+      hideAllPhases();
+      document.getElementById('phase-upload').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function previewFile() {
+      const fileInput = document.getElementById('proof-file-input');
+      const file = fileInput.files[0];
+      if (file) {
+        document.getElementById('proof-file-name').innerText = file.name;
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          base64Proof = reader.result;
+          const preview = document.getElementById('image-preview');
+          preview.src = base64Proof;
+          preview.classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    async function submitProof() {
+      if (!base64Proof) {
+        alert('Silakan pilih foto struk / bukti transfer terlebih dahulu!');
+        return;
+      }
+
+      try {
+        await fetch('http://localhost:3000/api/upload-proof', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order_id: currentOrderId, proof_image: base64Proof })
+        });
+
+        hideAllPhases();
+        document.getElementById('phase-waiting').classList.remove('hidden');
+        lucide.createIcons();
+      } catch (e) {
+        alert('Gagal mengirim bukti transfer. Coba lagi.');
+      }
+    }
+
+    function startPolling(orderId) {
+      if (pollingTimer) clearInterval(pollingTimer);
       pollingTimer = setInterval(async () => {
         try {
           const res = await fetch(`http://localhost:3000/api/order-status/${orderId}`);
@@ -419,17 +492,15 @@
 
           if (data.status === 'PAID') {
             clearInterval(pollingTimer);
-
-            // Beralih ke layar transaksi sukses
-            phaseQris.classList.add('hidden');
-            phaseSuccess.classList.remove('hidden');
-            document.getElementById('success-email-display').innerText = email;
+            hideAllPhases();
+            document.getElementById('phase-success').classList.remove('hidden');
+            document.getElementById('success-email-display').innerText = currentEmail;
             lucide.createIcons();
           }
         } catch (e) {
-          console.error('Checking status error:', e);
+          console.error('Polling status error:', e);
         }
-      }, 2000); // Mengecek setiap 2 detik
+      }, 2000);
     }
   </script>
 </body>
