@@ -9,9 +9,13 @@ export default async function handler(req, res) {
   const { orderId, packageName, price, email, type } = req.body;
 
   const BOT_TOKEN = "8636838151:AAFpbytiio0xBSqW7hrqddhfLf3e2XwHrpY";
-  const CHAT_ID = "8731786333";
+  
+  // Daftar Admin 1 dan Admin 2
+  const ADMIN_RECIPIENTS = [
+    "8731786333", // Admin 1
+    "6654067367"  // Admin 2
+  ];
 
-  // Konversi Waktu Eksplisit ke Asia/Jakarta (WIB)
   const nowWIB = new Intl.DateTimeFormat('id-ID', {
     timeZone: 'Asia/Jakarta',
     hour: '2-digit',
@@ -52,21 +56,23 @@ _Klik tombol di bawah untuk verifikasi lunas:_`;
 
   try {
     const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-    const response = await fetch(telegramUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: CHAT_ID,
-        text: messageText,
-        parse_mode: 'Markdown',
-        reply_markup: {
-          inline_keyboard: inlineKeyboard
-        }
+    
+    const sendPromises = ADMIN_RECIPIENTS.map(chatId => 
+      fetch(telegramUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: messageText,
+          parse_mode: 'Markdown',
+          reply_markup: inlineKeyboard.length > 0 ? { inline_keyboard: inlineKeyboard } : undefined
+        })
       })
-    });
+    );
 
-    const data = await response.json();
-    return res.status(200).json({ success: true, data });
+    await Promise.all(sendPromises);
+
+    return res.status(200).json({ success: true });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
