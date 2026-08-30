@@ -10,7 +10,12 @@ const ADMIN_NAMES = {
   "6654067367": "Admin 2"
 };
 
-const ADMIN_RECIPIENTS = Object.keys(ADMIN_NAMES);
+// Target broadcast saat transaksi tuntas
+const ALL_RECIPIENTS = [
+  "-1004352073054", // Grup Telegram
+  "8731786333",     // Japri Admin 1
+  "6654067367"      // Japri Admin 2
+];
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -20,7 +25,25 @@ export default async function handler(req, res) {
   const update = req.body;
 
   try {
-    // 1. TANGANI KLIK TOMBOL "VERIFIKASI LUNAS" DARI SALAH SATU ADMIN
+    // 0. TANGANI PERINTAH /start DI GRUP MAUPUN JAPRI
+    if (update.message && update.message.text) {
+      const text = update.message.text.trim();
+      if (text.startsWith('/start')) {
+        const senderName = update.message.from.first_name || 'Admin';
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: update.message.chat.id,
+            text: `👋 Halo *${senderName}*!\n\nBot *eSIMGo* siap menerima notifikasi dan memproses transaksi eSIM.`,
+            parse_mode: 'Markdown'
+          })
+        });
+        return res.status(200).json({ ok: true });
+      }
+    }
+
+    // 1. TANGANI KLIK TOMBOL "VERIFIKASI LUNAS" (BISA DARI GRUP MAUPUN JAPRI)
     if (update.callback_query) {
       const callback = update.callback_query;
       const data = callback.data;
@@ -28,14 +51,15 @@ export default async function handler(req, res) {
       if (data && data.startsWith('VERIFY_')) {
         const orderId = data.replace('VERIFY_', '');
         const adminId = String(callback.from.id);
-        const adminName = ADMIN_NAMES[adminId] || `Admin (${adminId})`;
+        const adminName = ADMIN_NAMES[adminId] || callback.from.first_name || 'Admin';
 
+        // Update status di Firebase
         await fetch(`${FIREBASE_DB_URL}/orders/${orderId}/status.json`, {
           method: 'PUT',
           body: JSON.stringify('PAID')
         });
 
-        // Ubah tombol di pesan admin yang mengklik
+        // Edit tombol di chat tempat tombol diklik
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/editMessageReplyMarkup`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -50,13 +74,15 @@ export default async function handler(req, res) {
           })
         });
 
-        // Kirim instruksi reply dokumen ke admin tersebut
+        // Kirim instruksi reply file ke chat bersangkutan
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             chat_id: callback.message.chat.id,
-            text: `💡 *Order #${orderId} telah diverifikasi LUNAS oleh Anda (${adminName})!*\n\nSilakan *REPLY (Balas)* pesan ini dengan melampirkan **File PDF** atau **Foto QR Code** eSIM untuk dikirim ke pembeli.`,
+            text: `💡 *Order #${orderId} telah diverifikasi LUNAS oleh ${adminName}!*
+
+Silakan *REPLY (Balas)* pesan ini dengan melampirkan file **PDF** atau foto **QR Code** eSIM untuk dikirim ke email pembeli.`,
             parse_mode: 'Markdown',
             reply_to_message_id: callback.message.message_id
           })
@@ -65,12 +91,14 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
-    // 2. TANGANI BALASAN (REPLY) PDF/QR DARI ADMIN 1 ATAU ADMIN 2
+    // 2. TANGANI REPLY DOKUMEN / FOTO QR DARI GRUP ATAU JAPRI
     if (update.message && (update.message.document || update.message.photo) && update.message.reply_to_message) {
-      const senderId = String(update.message.chat.id);
-      
-      // Pastikan pengirim adalah salah satu admin terdaftar
-      if (!ADMIN_RECIPIENTS.includes(senderId)) {
+      const senderId = String(update.message.from.id);
+      const chatId = String(update.message.chat.id);
+
+      // Pastikan berasal dari grup terdaftar atau salah satu admin terdaftar
+      const isAllowed = ALL_RECIPIENTS.includes(chatId) || Object.keys(ADMIN_NAMES).includes(senderId);
+      if (!isAllowed) {
         return res.status(200).json({ ok: true });
       }
 
@@ -80,7 +108,7 @@ export default async function handler(req, res) {
 
       if (match) {
         const orderId = match[0].toUpperCase();
-        const executorName = ADMIN_NAMES[senderId] || `Admin (${senderId})`;
+        const executorName = ADMIN_NAMES[senderId] || update.message.from.first_name || 'Admin';
 
         const orderRes = await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`);
         const orderData = await orderRes.json();
@@ -92,7 +120,8 @@ export default async function handler(req, res) {
             body: JSON.stringify({
               chat_id: update.message.chat.id,
               text: `⚠️ Data pesanan *#${orderId}* tidak ditemukan di database.`,
-              parse_mode: 'Markdown'
+              parse_mode: 'Markdown',
+              reply_to_message_id: update.message.message_id
             })
           });
           return res.status(200).json({ ok: true });
@@ -124,7 +153,7 @@ export default async function handler(req, res) {
         const fileBuffer = await (await fetch(downloadUrl)).arrayBuffer();
         const buffer = Buffer.from(fileBuffer);
 
-        // Kirim email profil eSIM ke pembeli
+        // Kirim email eSIM ke pembeli
         const transporter = nodemailer.createTransport({
           service: 'gmail',
           auth: { user: GMAIL_USER, pass: GMAIL_PASS }
@@ -158,13 +187,12 @@ export default async function handler(req, res) {
           }]
         });
 
-        // Update status pesanan di Firebase menjadi COMPLETED
+        // Update database ke COMPLETED
         await fetch(`${FIREBASE_DB_URL}/orders/${orderId}/status.json`, {
           method: 'PUT',
           body: JSON.stringify('COMPLETED')
         });
 
-        // Buat pesan notifikasi sukses untuk disebar ke SEMUA admin
         const nowWIB = new Intl.DateTimeFormat('id-ID', {
           timeZone: 'Asia/Jakarta',
           hour: '2-digit',
@@ -182,15 +210,15 @@ export default async function handler(req, res) {
 👤 *Diproses oleh:* *${executorName}*
 ⏱ *Waktu:* ${nowWIB} WIB
 
-_QR Code / PDF telah berhasil dikirimkan ke email pembeli._`;
+_QR Code / PDF telah sukses terkirim ke email pembeli._`;
 
-        // Broadcast notifikasi ke Admin 1 dan Admin 2
-        const broadcastPromises = ADMIN_RECIPIENTS.map(chatId =>
+        // Broadcast penyelesaian ke GRUP dan JAPRI ADMIN
+        const broadcastPromises = ALL_RECIPIENTS.map(targetId =>
           fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              chat_id: chatId,
+              chat_id: targetId,
               text: successBroadcastMessage,
               parse_mode: 'Markdown'
             })
