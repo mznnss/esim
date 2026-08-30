@@ -10,7 +10,7 @@ const ADMIN_NAMES = {
   "6654067367": "Admin 2"
 };
 
-// Target broadcast saat transaksi tuntas
+// Target notifikasi broadcast
 const ALL_RECIPIENTS = [
   "-1004352073054", // Grup Telegram
   "8731786333",     // Japri Admin 1
@@ -25,17 +25,140 @@ export default async function handler(req, res) {
   const update = req.body;
 
   try {
-    // 0. TANGANI PERINTAH /start DI GRUP MAUPUN JAPRI
+    // ==========================================
+    // 1. TANGANI COMMAND TEKS (/start, /cek, /pantau)
+    // ==========================================
     if (update.message && update.message.text) {
-      const text = update.message.text.trim();
+      const rawText = update.message.text.trim();
+      const text = rawText.replace(/@goesimidbot/gi, '').trim();
+
+      // COMMAND /start
       if (text.startsWith('/start')) {
-        const senderName = update.message.from.first_name || 'Admin';
+        const startMessage = `👋 *Halo! Selamat Datang di Bot eSIMGo Admin*
+
+Bot ini berfungsi sebagai pusat monitoring & pemrosesan pesanan eSIM.
+
+📌 *Fitur & Perintah Bot:*
+• \`/pantau\` - Rekap ringkasan order & antrean
+• \`/cek ORD-XXXX\` - Cek detail status satu transaksi
+• 🛒 *Notifikasi Otomatis:* Bukti bayar otomatis dikirim ke sini
+• 📤 *Kirim eSIM:* Cukup *Reply* notifikasi dengan melampirkan file PDF / Foto QR Code eSIM
+
+_Bot siap digunakan._`;
+
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             chat_id: update.message.chat.id,
-            text: `👋 Halo *${senderName}*!\n\nBot *eSIMGo* siap menerima notifikasi dan memproses transaksi eSIM.`,
+            text: startMessage,
+            parse_mode: 'Markdown'
+          })
+        });
+        return res.status(200).json({ ok: true });
+      }
+
+      // COMMAND /cek (Contoh: /cek ORD-1001)
+      if (text.startsWith('/cek')) {
+        const parts = text.split(/\s+/);
+        const targetOrderId = parts[1] ? parts[1].trim().toUpperCase() : null;
+
+        if (!targetOrderId) {
+          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: update.message.chat.id,
+              text: `⚠️ *Format salah!*\n\nGunakan: \`/cek ORD-XXXXX\`\nContoh: \`/cek ORD-1001\``,
+              parse_mode: 'Markdown'
+            })
+          });
+          return res.status(200).json({ ok: true });
+        }
+
+        const resData = await fetch(`${FIREBASE_DB_URL}/orders/${targetOrderId}.json`);
+        const order = await resData.json();
+
+        if (!order) {
+          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: update.message.chat.id,
+              text: `❌ Pesanan \`${targetOrderId}\` tidak ditemukan di database.`,
+              parse_mode: 'Markdown'
+            })
+          });
+          return res.status(200).json({ ok: true });
+        }
+
+        const statusBadge = {
+          'PENDING': '🟡 MENUNGGU PEMBAYARAN',
+          'PAID': '🔵 LUNAS (Perlu Kirim eSIM)',
+          'COMPLETED': '✅ SELESAI / SUDAH TERKIRIM'
+        }[order.status] || order.status;
+
+        const replyCek = `🔍 *DETAIL STATUS TRANSAKSI*
+━━━━━━━━━━━━━━━━━━
+🆔 *Order ID:* \`${targetOrderId}\`
+📦 *Paket:* ${order.package_name || '-'}
+💰 *Nominal:* Rp ${Number(order.price || 0).toLocaleString('id-ID')}
+📧 *Email:* ${order.email || '-'}
+📊 *Status:* *${statusBadge}*`;
+
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: update.message.chat.id,
+            text: replyCek,
+            parse_mode: 'Markdown'
+          })
+        });
+        return res.status(200).json({ ok: true });
+      }
+
+      // COMMAND /pantau atau /rekap
+      if (text.startsWith('/pantau') || text.startsWith('/rekap')) {
+        const resAll = await fetch(`${FIREBASE_DB_URL}/orders.json`);
+        const allOrders = (await resAll.json()) || {};
+
+        let countPending = 0;
+        let countPaid = 0;
+        let countCompleted = 0;
+        const orderKeys = Object.keys(allOrders);
+
+        orderKeys.forEach(k => {
+          const st = allOrders[k].status;
+          if (st === 'PENDING') countPending++;
+          else if (st === 'PAID') countPaid++;
+          else if (st === 'COMPLETED') countCompleted++;
+        });
+
+        const recentList = orderKeys.slice(-5).reverse().map(k => {
+          const item = allOrders[k];
+          const icon = item.status === 'COMPLETED' ? '✅' : item.status === 'PAID' ? '🔵' : '🟡';
+          return `${icon} \`${k}\` | ${item.package_name || 'eSIM'} | *${item.status}*`;
+        }).join('\n');
+
+        const rekapText = `📊 *MONITORING TRANSAKSI ESIM*
+━━━━━━━━━━━━━━━━━━
+🟡 Menunggu Bayar    : *${countPending}*
+🔵 Antrean Kirim eSIM: *${countPaid}*
+✅ Selesai / Terkirim : *${countCompleted}*
+📦 Total Semua Order : *${orderKeys.length}*
+━━━━━━━━━━━━━━━━━━
+🕒 *5 Pesanan Terakhir:*
+${recentList || '_Belum ada transaksi_'}
+
+_Ketik \`/cek ORD-ID\` untuk melihat rincian per order._`;
+
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: update.message.chat.id,
+            text: rekapText,
             parse_mode: 'Markdown'
           })
         });
@@ -43,7 +166,9 @@ export default async function handler(req, res) {
       }
     }
 
-    // 1. TANGANI KLIK TOMBOL "VERIFIKASI LUNAS" (BISA DARI GRUP MAUPUN JAPRI)
+    // ==========================================
+    // 2. TANGANI KLIK TOMBOL "VERIFIKASI LUNAS"
+    // ==========================================
     if (update.callback_query) {
       const callback = update.callback_query;
       const data = callback.data;
@@ -53,13 +178,11 @@ export default async function handler(req, res) {
         const adminId = String(callback.from.id);
         const adminName = ADMIN_NAMES[adminId] || callback.from.first_name || 'Admin';
 
-        // Update status di Firebase
         await fetch(`${FIREBASE_DB_URL}/orders/${orderId}/status.json`, {
           method: 'PUT',
           body: JSON.stringify('PAID')
         });
 
-        // Edit tombol di chat tempat tombol diklik
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/editMessageReplyMarkup`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -74,7 +197,6 @@ export default async function handler(req, res) {
           })
         });
 
-        // Kirim instruksi reply file ke chat bersangkutan
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -91,12 +213,13 @@ Silakan *REPLY (Balas)* pesan ini dengan melampirkan file **PDF** atau foto **QR
       return res.status(200).json({ ok: true });
     }
 
-    // 2. TANGANI REPLY DOKUMEN / FOTO QR DARI GRUP ATAU JAPRI
+    // ==========================================
+    // 3. TANGANI REPLY DOKUMEN / QR CODE OLEH ADMIN
+    // ==========================================
     if (update.message && (update.message.document || update.message.photo) && update.message.reply_to_message) {
       const senderId = String(update.message.from.id);
       const chatId = String(update.message.chat.id);
 
-      // Pastikan berasal dari grup terdaftar atau salah satu admin terdaftar
       const isAllowed = ALL_RECIPIENTS.includes(chatId) || Object.keys(ADMIN_NAMES).includes(senderId);
       if (!isAllowed) {
         return res.status(200).json({ ok: true });
@@ -153,7 +276,6 @@ Silakan *REPLY (Balas)* pesan ini dengan melampirkan file **PDF** atau foto **QR
         const fileBuffer = await (await fetch(downloadUrl)).arrayBuffer();
         const buffer = Buffer.from(fileBuffer);
 
-        // Kirim email eSIM ke pembeli
         const transporter = nodemailer.createTransport({
           service: 'gmail',
           auth: { user: GMAIL_USER, pass: GMAIL_PASS }
@@ -187,7 +309,6 @@ Silakan *REPLY (Balas)* pesan ini dengan melampirkan file **PDF** atau foto **QR
           }]
         });
 
-        // Update database ke COMPLETED
         await fetch(`${FIREBASE_DB_URL}/orders/${orderId}/status.json`, {
           method: 'PUT',
           body: JSON.stringify('COMPLETED')
@@ -212,7 +333,6 @@ Silakan *REPLY (Balas)* pesan ini dengan melampirkan file **PDF** atau foto **QR
 
 _QR Code / PDF telah sukses terkirim ke email pembeli._`;
 
-        // Broadcast penyelesaian ke GRUP dan JAPRI ADMIN
         const broadcastPromises = ALL_RECIPIENTS.map(targetId =>
           fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
             method: 'POST',
