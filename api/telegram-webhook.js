@@ -10,14 +10,12 @@ const ADMIN_NAMES = {
   "6654067367": "Admin 2"
 };
 
-// Target notifikasi broadcast (Grup + Japri Admin)
 const ALL_RECIPIENTS = [
   "-1004352073054", // Grup Telegram
   "8731786333",     // Japri Admin 1
   "6654067367"      // Japri Admin 2
 ];
 
-// Helper: Normalisasi Order ID (Ubah 0RD jadi ORD dan bersihkan tanda dash)
 function cleanOrderId(id) {
   if (!id) return '';
   return id
@@ -41,7 +39,6 @@ export default async function handler(req, res) {
       const rawText = update.message.text.trim();
       const text = rawText.replace(/@goesimidbot/gi, '').trim();
 
-      // COMMAND /start
       if (text.startsWith('/start')) {
         const startMessage = `👋 *Halo! Selamat Datang di Bot eSIMGo Admin*
 
@@ -49,10 +46,9 @@ Bot ini berfungsi sebagai pusat monitoring & pemrosesan pesanan eSIM.
 
 📌 *Fitur & Perintah Bot:*
 • \`/pantau\` - Rekap ringkasan order & antrean
-• \`/cek ORD-XXXX\` - Cek detail status satu transaksi
+• \`/cek ORD-XXXX\` - Cek detail status transaksi
 • \`/selesai ORD-XXXX\` - Tandai order selesai manual
-• 🛒 *Notifikasi Otomatis:* Bukti bayar otomatis masuk ke grup ini
-• 📤 *Kirim eSIM:* Cukup *Reply* notifikasi dengan melampirkan file PDF / Foto QR Code eSIM
+• 📤 *Kirim eSIM + Catatan:* *Reply* pesan notifikasi dengan lampiran file & tulis catatan admin pada caption foto/file.
 
 _Bot siap digunakan._`;
 
@@ -68,7 +64,6 @@ _Bot siap digunakan._`;
         return res.status(200).json({ ok: true });
       }
 
-      // COMMAND /cek (Contoh: /cek ORD-559458 atau /cek 0RD-559458)
       if (text.startsWith('/cek')) {
         const parts = text.split(/\s+/);
         let targetOrderId = parts[1] ? cleanOrderId(parts[1]) : null;
@@ -79,18 +74,16 @@ _Bot siap digunakan._`;
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               chat_id: update.message.chat.id,
-              text: `⚠️ *Format salah!*\n\nGunakan: \`/cek ORD-XXXXX\`\nContoh: \`/cek ORD-559458\``,
+              text: `⚠️ *Format salah!*\nGunakan: \`/cek ORD-XXXXX\``,
               parse_mode: 'Markdown'
             })
           });
           return res.status(200).json({ ok: true });
         }
 
-        // Cari data dengan ID yang sudah dinormalisasi atau ID mentah aslinya
         let resData = await fetch(`${FIREBASE_DB_URL}/orders/${targetOrderId}.json`);
         let order = await resData.json();
 
-        // Fallback jika di database tersimpan sebagai 0RD
         if (!order) {
           const fallbackId = targetOrderId.replace(/^ORD/, '0RD');
           resData = await fetch(`${FIREBASE_DB_URL}/orders/${fallbackId}.json`);
@@ -123,6 +116,7 @@ _Bot siap digunakan._`;
 📦 *Paket:* ${order.package_name || '-'}
 💰 *Nominal:* Rp ${Number(order.price || 0).toLocaleString('id-ID')}
 📧 *Email:* ${order.email || '-'}
+📝 *Catatan:* ${order.admin_note || '_Tidak ada catatan_'}
 📊 *Status:* *${statusBadge}*`;
 
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
@@ -137,7 +131,6 @@ _Bot siap digunakan._`;
         return res.status(200).json({ ok: true });
       }
 
-      // COMMAND /selesai (Selesaikan transaksi manual tanpa reply file)
       if (text.startsWith('/selesai')) {
         const parts = text.split(/\s+/);
         let targetOrderId = parts[1] ? cleanOrderId(parts[1]) : null;
@@ -148,7 +141,7 @@ _Bot siap digunakan._`;
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               chat_id: update.message.chat.id,
-              text: `⚠️ *Format salah!*\n\nGunakan: \`/selesai ORD-XXXXX\``,
+              text: `⚠️ *Format salah!*\nGunakan: \`/selesai ORD-XXXXX\``,
               parse_mode: 'Markdown'
             })
           });
@@ -157,7 +150,6 @@ _Bot siap digunakan._`;
 
         const senderName = update.message.from.first_name || 'Admin';
 
-        // Cek database
         let resData = await fetch(`${FIREBASE_DB_URL}/orders/${targetOrderId}.json`);
         let order = await resData.json();
 
@@ -174,7 +166,7 @@ _Bot siap digunakan._`;
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               chat_id: update.message.chat.id,
-              text: `❌ Order \`${targetOrderId}\` tidak ditemukan di database.`,
+              text: `❌ Order \`${targetOrderId}\` tidak ditemukan.`,
               parse_mode: 'Markdown'
             })
           });
@@ -191,14 +183,13 @@ _Bot siap digunakan._`;
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             chat_id: update.message.chat.id,
-            text: `✅ Status Order *#${targetOrderId}* berhasil diubah menjadi *COMPLETED / SELESAI* oleh *${senderName}*!`,
+            text: `✅ Status Order *#${targetOrderId}* berhasil diselesaikan oleh *${senderName}*!`,
             parse_mode: 'Markdown'
           })
         });
         return res.status(200).json({ ok: true });
       }
 
-      // COMMAND /pantau atau /rekap
       if (text.startsWith('/pantau') || text.startsWith('/rekap')) {
         const resAll = await fetch(`${FIREBASE_DB_URL}/orders.json`);
         const allOrders = (await resAll.json()) || {};
@@ -258,7 +249,6 @@ _Ketik \`/cek ORD-ID\` untuk melihat rincian per order._`;
         const adminId = String(callback.from.id);
         const adminName = ADMIN_NAMES[adminId] || callback.from.first_name || 'Admin';
 
-        // Update status di Firebase
         await fetch(`${FIREBASE_DB_URL}/orders/${orderId}/status.json`, {
           method: 'PUT',
           body: JSON.stringify('PAID')
@@ -285,7 +275,8 @@ _Ketik \`/cek ORD-ID\` untuk melihat rincian per order._`;
             chat_id: callback.message.chat.id,
             text: `💡 *Order #${orderId} telah diverifikasi LUNAS oleh ${adminName}!*
 
-Silakan *REPLY (Balas)* pesan ini dengan melampirkan file **PDF** atau foto **QR Code** eSIM untuk dikirim ke email pembeli.`,
+Silakan *REPLY (Balas)* pesan ini dengan melampirkan **Foto QR Code / File PDF**.
+*(Opsional: Tulis keterangan / catatan aktivasi manual pada caption file).*`,
             parse_mode: 'Markdown',
             reply_to_message_id: callback.message.message_id
           })
@@ -295,7 +286,7 @@ Silakan *REPLY (Balas)* pesan ini dengan melampirkan file **PDF** atau foto **QR
     }
 
     // ==========================================
-    // 3. TANGANI REPLY DOKUMEN / QR CODE OLEH ADMIN
+    // 3. TANGANI REPLY DOKUMEN / QR CODE + CAPTION CATATAN
     // ==========================================
     if (update.message && (update.message.document || update.message.photo) && update.message.reply_to_message) {
       const senderId = String(update.message.from.id);
@@ -308,19 +299,18 @@ Silakan *REPLY (Balas)* pesan ini dengan melampirkan file **PDF** atau foto **QR
 
       const replyMsg = update.message.reply_to_message;
       const replyText = replyMsg.text || replyMsg.caption || "";
-
-      // Regex fleksibel: membaca ORD/0RD dengan tanda dash strip apa pun
       const match = replyText.match(/[O0]RD[-\u2013\u2014]\d+/i);
 
       if (match) {
         let orderId = cleanOrderId(match[0]);
         const executorName = ADMIN_NAMES[senderId] || update.message.from.first_name || 'Admin';
 
-        // Cek Firebase
+        // Ambil catatan admin dari Caption foto / file
+        const adminNote = update.message.caption ? update.message.caption.trim() : "";
+
         let orderRes = await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`);
         let orderData = await orderRes.json();
 
-        // Fallback jika ID di database diawali angka 0
         if (!orderData) {
           const fallbackId = orderId.replace(/^ORD/, '0RD');
           orderRes = await fetch(`${FIREBASE_DB_URL}/orders/${fallbackId}.json`);
@@ -368,6 +358,15 @@ Silakan *REPLY (Balas)* pesan ini dengan melampirkan file **PDF** atau foto **QR
         const fileBuffer = await (await fetch(downloadUrl)).arrayBuffer();
         const buffer = Buffer.from(fileBuffer);
 
+        // Susun blok HTML catatan jika ada
+        const noteHtmlBlock = adminNote ? `
+          <div style="background-color: #1e293b; border-left: 3px solid #38bdf8; border-radius: 6px; padding: 12px 14px; margin-bottom: 20px;">
+            <p style="margin: 0 0 4px 0; font-size: 12px; font-weight: 700; color: #38bdf8;">📝 Catatan Tambahan dari Admin:</p>
+            <p style="margin: 0; font-size: 13px; color: #f1f5f9; white-space: pre-line; line-height: 1.5;">${adminNote}</p>
+          </div>
+        ` : '';
+
+        // Kirim email dark mode
         const transporter = nodemailer.createTransport({
           service: 'gmail',
           auth: { user: GMAIL_USER, pass: GMAIL_PASS }
@@ -376,23 +375,40 @@ Silakan *REPLY (Balas)* pesan ini dengan melampirkan file **PDF** atau foto **QR
         await transporter.sendMail({
           from: `"eSIMGo Official" <${GMAIL_USER}>`,
           to: orderData.email,
-          subject: `[eSIMGo] Profil & Panduan eSIM Anda Siap - Order #${orderId}`,
+          subject: `[eSIMGo] Profil QR Code eSIM Siap Digunakan - Order #${orderId}`,
           html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
-              <h2 style="color: #4f46e5; text-align: center; margin-top: 0;">eSIMGo - Profil eSIM Siap Digunakan</h2>
-              <div style="background: #f8fafc; padding: 12px 15px; border-radius: 10px; font-size: 13px; margin: 15px 0;">
-                <p style="margin: 3px 0;"><b>No. Pesanan:</b> #${orderId}</p>
-                <p style="margin: 3px 0;"><b>Paket Layanan:</b> ${orderData.package_name || '-'}</p>
-                <p style="margin: 3px 0;"><b>Status:</b> <span style="color: #16a34a; font-weight: bold;">LUNAS & SELESAI</span></p>
+            <div style="background-color: #12141a; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 540px; margin: 0 auto; padding: 32px 24px; border-radius: 18px;">
+              <div style="text-align: center; margin-bottom: 28px;">
+                <h1 style="color: #c084fc; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">eSIMGo</h1>
+                <p style="color: #94a3b8; font-size: 13px; margin-top: 6px;">Konfirmasi Aktivasi & QR Code eSIM Roaming</p>
               </div>
-              <p style="font-size: 13px; color: #334155; line-height: 1.6;">
-                Halo, terima kasih telah berbelanja di eSIMGo. Dokumen / file profil eSIM Anda telah dilampirkan pada email ini.
-              </p>
-              <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 10px; margin: 15px 0; font-size: 12px; color: #991b1b;">
-                <b>Perhatian:</b> Aktifkan fitur <b>Data Roaming</b> di pengaturan smartphone Anda saat telah mendarat di negara tujuan.
+
+              <div style="background-color: #1a1d26; border: 1px solid #282d3d; border-radius: 12px; padding: 18px 20px; margin-bottom: 24px;">
+                <p style="margin: 6px 0; font-size: 14px; color: #cbd5e1;"><strong style="color: #ffffff;">No. Order:</strong> #${orderId}</p>
+                <p style="margin: 6px 0; font-size: 14px; color: #cbd5e1;"><strong style="color: #ffffff;">Paket Layanan:</strong> ${orderData.package_name || '-'}</p>
+                <p style="margin: 6px 0; font-size: 14px; color: #cbd5e1;"><strong style="color: #ffffff;">Status Pembayaran:</strong> <span style="color: #4ade80; font-weight: 700;">LUNAS</span></p>
               </div>
-              <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-              <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">© 2026 eSIMGo • Rifki Cell</p>
+
+              ${noteHtmlBlock}
+
+              <h3 style="color: #ffffff; font-size: 15px; margin: 0 0 14px 0;">Panduan Pemasangan eSIM:</h3>
+              <ol style="color: #cbd5e1; font-size: 13px; line-height: 1.7; padding-left: 18px; margin: 0 0 24px 0;">
+                <li style="margin-bottom: 6px;">Pastikan smartphone Anda terhubung ke jaringan Wi-Fi / Internet yang stabil.</li>
+                <li style="margin-bottom: 6px;">Buka menu <strong>Pengaturan HP (Settings) &gt; Seluler / Jaringan Seluler</strong>.</li>
+                <li style="margin-bottom: 6px;">Pilih menu <strong>Tambah Paket Seluler (Add eSIM)</strong>.</li>
+                <li style="margin-bottom: 6px;">Scan barcode QR Code yang ada di lampiran email ini.</li>
+                <li style="margin-bottom: 6px;">Selesaikan proses aktivasi dan beri label nama profil (misal: <em>eSIM Roaming</em>).</li>
+              </ol>
+
+              <div style="background-color: rgba(239, 68, 68, 0.1); border-left: 3px solid #ef4444; border-radius: 6px; padding: 12px 14px;">
+                <p style="margin: 0; font-size: 12px; color: #fca5a5; line-height: 1.5;">
+                  <strong style="color: #ef4444;">Perhatian:</strong> Aktifkan opsi <strong>Data Roaming</strong> pada profil eSIM ini saat Anda telah mendarat di negara tujuan.
+                </p>
+              </div>
+
+              <div style="margin-top: 30px; text-align: center; border-top: 1px solid #242938; padding-top: 18px;">
+                <p style="color: #64748b; font-size: 11px; margin: 0;">© 2026 eSIMGo • Rifki Cell. All rights reserved.</p>
+              </div>
             </div>
           `,
           attachments: [{
@@ -401,10 +417,13 @@ Silakan *REPLY (Balas)* pesan ini dengan melampirkan file **PDF** atau foto **QR
           }]
         });
 
-        // Update status di Firebase ke COMPLETED
-        await fetch(`${FIREBASE_DB_URL}/orders/${orderId}/status.json`, {
-          method: 'PUT',
-          body: JSON.stringify('COMPLETED')
+        // Update status & simpan catatan ke database
+        await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            status: 'COMPLETED',
+            admin_note: adminNote || null
+          })
         });
 
         const nowWIB = new Intl.DateTimeFormat('id-ID', {
@@ -421,10 +440,11 @@ Silakan *REPLY (Balas)* pesan ini dengan melampirkan file **PDF** atau foto **QR
 📦 *Paket:* ${orderData.package_name || '-'}
 📧 *Email:* ${orderData.email}
 📎 *File:* \`${fileName}\`
+📝 *Catatan:* ${adminNote ? `_${adminNote}_` : '_Tidak ada catatan_'}
 👤 *Diproses oleh:* *${executorName}*
 ⏱ *Waktu:* ${nowWIB} WIB
 
-_QR Code / PDF telah sukses terkirim ke email pembeli._`;
+_QR Code & Panduan berhasil terkirim ke email pembeli._`;
 
         const broadcastPromises = ALL_RECIPIENTS.map(targetId =>
           fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
