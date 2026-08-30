@@ -3,138 +3,119 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Beli eSIM - Auto Detect Payment</title>
+  <title>Beli eSIM Roaming</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>body { font-family: 'Plus Jakarta Sans', sans-serif; }</style>
 </head>
-<body class="bg-slate-50 text-slate-800 antialiased min-h-screen">
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen p-4 flex items-center justify-center">
 
-  <div class="max-w-md mx-auto p-4 pt-10">
-    <div class="bg-white rounded-3xl p-6 shadow-xl border border-slate-100">
-      
-      <!-- STEP 1: FORM PEMBELIAN -->
-      <div id="step-form">
-        <h2 class="text-xl font-black text-slate-900 mb-1">Beli Paket eSIM</h2>
-        <p class="text-xs text-slate-500 mb-6">Pilih paket dan bayar instan via QRIS</p>
+  <div class="max-w-md w-full bg-white rounded-3xl p-6 shadow-xl border border-slate-100">
+    
+    <!-- STEP 1: FORM -->
+    <div id="step-form">
+      <h2 class="text-xl font-extrabold text-slate-900 mb-1">Beli Paket eSIM</h2>
+      <p class="text-xs text-slate-500 mb-6">Pilih destinasi dan masukkan email Anda.</p>
 
-        <div class="space-y-4">
-          <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">Paket Negara</label>
-            <select id="package-select" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-semibold">
-              <option value="145000">🇯🇵 Jepang - 10 GB / 7 Hari (Rp 145.000)</option>
-              <option value="85000">🇸🇬 Singapura - Unlimited / 5 Hari (Rp 85.000)</option>
-              <option value="320000">🇪🇺 Eropa 33 Negara - 20 GB / 30 Hari (Rp 320.000)</option>
-            </select>
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">Email Penerima eSIM</label>
-            <input type="email" id="customer-email" placeholder="nama@email.com" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-600" required />
-          </div>
-
-          <button onclick="requestQRIS()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition text-sm">
-            Tampilkan Kode QRIS
-          </button>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Pilihan Paket</label>
+          <select id="paket" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-semibold">
+            <option value="145000">🇯🇵 Jepang - 10 GB / 7 Hari (Rp 145.000)</option>
+            <option value="85000">🇸🇬 Singapura - Unlimited / 5 Hari (Rp 85.000)</option>
+            <option value="320000">🇪🇺 Eropa 33 Negara - 20 GB / 30 Hari (Rp 320.000)</option>
+          </select>
         </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Email Penerima eSIM</label>
+          <input type="email" id="email" required placeholder="nama@email.com" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-600" />
+        </div>
+
+        <button onclick="submitOrder()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition text-sm">
+          Lanjut ke Pembayaran QRIS
+        </button>
       </div>
-
-      <!-- STEP 2: TAMPILAN QRIS & AUTO POLLING -->
-      <div id="step-qris" class="hidden text-center">
-        <div class="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-semibold mb-4">
-          <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span> Menunggu Pembayaran...
-        </div>
-        
-        <h3 class="text-lg font-bold text-slate-900 mb-1">Scan QRIS untuk Bayar</h3>
-        <p class="text-xs text-slate-500 mb-4">Gunakan BCA, GoPay, OVO, Dana, ShopeePay, dll.</p>
-
-        <!-- Area Gambar QRIS -->
-        <div class="bg-slate-50 border border-slate-200 p-4 rounded-2xl inline-block mb-4">
-          <img id="qris-image" src="" alt="QR Code" class="w-48 h-48 mx-auto rounded-lg" />
-        </div>
-
-        <p class="text-xs text-slate-400">Halaman ini akan otomatis selesai begitu Anda berhasil transfer.</p>
-      </div>
-
-      <!-- STEP 3: NOTIFIKASI SUKSES (AUTO DISPLAY) -->
-      <div id="step-success" class="hidden text-center py-6">
-        <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
-          <i data-lucide="check-circle-2" class="w-10 h-10"></i>
-        </div>
-        <h3 class="text-2xl font-black text-slate-900 mb-2">Pembayaran Berhasil!</h3>
-        <p class="text-sm text-slate-600 mb-6">
-          Transaksi Anda telah selesai diverifikasi otomatis. File profil eSIM sedang diproses dan segera dikirim ke email:
-          <br><b id="success-email" class="text-indigo-600"></b>
-        </p>
-        <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl text-xs text-slate-500 text-left">
-          • Pengiriman email memakan waktu maksimal 5–15 menit.<br>
-          • Silakan periksa folder <b>Inbox</b> atau <b>Spam</b> Anda.
-        </div>
-      </div>
-
     </div>
+
+    <!-- STEP 2: DISPLAY QRIS & REAL-TIME LISTENER -->
+    <div id="step-qris" class="hidden text-center">
+      <div class="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-semibold mb-3">
+        <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span> Menunggu Verifikasi Pembayaran...
+      </div>
+      
+      <p class="text-xs text-slate-400">Kode Transaksi: <b id="display-order-id" class="text-slate-800"></b></p>
+      <div class="text-lg font-black text-indigo-600 my-1" id="display-price"></div>
+
+      <!-- Ganti src dengan link gambar QRIS Statis Anda -->
+      <div class="bg-slate-50 border border-slate-200 p-3 rounded-2xl inline-block my-3">
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=QRIS_STATIS_TOKO" alt="QRIS" class="w-44 h-44 mx-auto rounded-lg" />
+      </div>
+
+      <p class="text-[12px] text-slate-500">Scan melalui aplikasi m-Banking / E-Wallet Anda. Halaman ini akan otomatis berganti setelah diverifikasi.</p>
+    </div>
+
+    <!-- STEP 3: NOTIFIKASI BERHASIL -->
+    <div id="step-success" class="hidden text-center py-6">
+      <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+        <i data-lucide="check-circle-2" class="w-10 h-10"></i>
+      </div>
+      <h3 class="text-2xl font-black text-slate-900 mb-1">Transaksi Berhasil!</h3>
+      <p class="text-sm text-slate-600 mb-6">
+        Pembayaran Anda telah diverifikasi oleh admin. File QR profile eSIM segera dikirimkan ke:
+        <br><b id="success-email" class="text-indigo-600 font-bold"></b>
+      </p>
+      <span class="text-xs bg-slate-100 text-slate-500 px-3 py-1.5 rounded-lg">Silakan periksa folder Inbox / Spam email Anda.</span>
+    </div>
+
   </div>
 
   <script>
     lucide.createIcons();
-    let pollInterval = null;
+    let checkInterval = null;
 
-    async function requestQRIS() {
-      const email = document.getElementById('customer-email').value;
-      const select = document.getElementById('package-select');
-      const price = parseInt(select.value);
-      const packageName = select.options[select.selectedIndex].text;
+    async function submitOrder() {
+      const email = document.getElementById('email').value;
+      const paketSelect = document.getElementById('paket');
+      const price = parseInt(paketSelect.value);
+      const packageName = paketSelect.options[paketSelect.selectedIndex].text;
 
-      if (!email) {
-        alert('Harap isi alamat email Anda!');
-        return;
-      }
+      if (!email) return alert('Email wajib diisi!');
 
-      // 1. Panggil backend untuk charge QRIS
-      try {
-        const response = await fetch('http://localhost:3000/api/charge-qris', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ package_name: packageName, price: price, customer_email: email })
-        });
+      const res = await fetch('http://localhost:3000/api/order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ package_name: packageName, price, email })
+      });
+      const data = await res.json();
 
-        const data = await response.json();
+      if (data.success) {
+        document.getElementById('step-form').classList.add('hidden');
+        document.getElementById('step-qris').classList.remove('hidden');
+        document.getElementById('display-order-id').innerText = data.order.order_id;
+        document.getElementById('display-price').innerText = 'Rp ' + price.toLocaleString('id-ID');
 
-        if (data.success) {
-          // Tampilkan QRIS
-          document.getElementById('step-form').classList.add('hidden');
-          document.getElementById('step-qris').classList.remove('hidden');
-          document.getElementById('qris-image').src = data.qr_url;
-
-          // 2. Jalankan Auto Polling tiap 3 detik untuk mendeteksi status
-          startCheckingPayment(data.order_id, email);
-        }
-      } catch (err) {
-        alert('Gagal membuat tagihan QRIS. Pastikan server backend sudah aktif.');
+        // Polling status tiap 2 detik
+        listenStatus(data.order.order_id, email);
       }
     }
 
-    function startCheckingPayment(orderId, email) {
-      pollInterval = setInterval(async () => {
+    function listenStatus(orderId, email) {
+      checkInterval = setInterval(async () => {
         try {
-          const res = await fetch(`http://localhost:3000/api/check-status/${orderId}`);
+          const res = await fetch(`http://localhost:3000/api/order-status/${orderId}`);
           const data = await res.json();
 
-          if (data.status === 'success') {
-            // Hentikan pengecekan
-            clearInterval(pollInterval);
-
-            // Beralih ke layar SUKSES
+          if (data.status === 'PAID') {
+            clearInterval(checkInterval);
             document.getElementById('step-qris').classList.add('hidden');
             document.getElementById('step-success').classList.remove('hidden');
             document.getElementById('success-email').innerText = email;
             lucide.createIcons();
           }
-        } catch (error) {
-          console.error('Error checking status:', error);
-        }
-      }, 3000); // Cek tiap 3000 ms (3 detik)
+        } catch (e) { console.error(e); }
+      }, 2000);
     }
   </script>
 </body>
