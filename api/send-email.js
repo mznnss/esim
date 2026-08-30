@@ -17,7 +17,8 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Email dan Order ID wajib diisi' });
   }
 
-  const RESEND_API_KEY = "re_Z3RLN1qS_7pVGsu3myADgrY2pRtKuVaj2";
+  // API Key Baru Resend
+  const RESEND_API_KEY = "re_B5kQM1RG_N9gNr587LLtvF4e25yn3CxJF";
 
   try {
     const response = await fetch('https://api.resend.com/emails', {
