@@ -6,25 +6,22 @@
   <title>Admin Dashboard - Verifikasi Bukti Bayar eSIM</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>body { font-family: 'Plus Jakarta Sans', sans-serif; }</style>
 </head>
 <body class="bg-slate-100 p-4 sm:p-8 min-h-screen text-slate-800">
 
   <div class="max-w-6xl mx-auto">
-    
     <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
       <div>
         <div class="flex items-center gap-2">
           <span class="bg-indigo-600 text-white p-1.5 rounded-lg"><i data-lucide="shield-check" class="w-4 h-4"></i></span>
           <h1 class="text-2xl font-black text-slate-900">Dashboard Admin eSIM</h1>
         </div>
-        <p class="text-xs text-slate-500 mt-1">Periksa bukti struk pembayaran dan verifikasi lunas.</p>
+        <p class="text-xs text-slate-500 mt-1">Real-time sinkronisasi pesanan dan verifikasi lunas.</p>
       </div>
 
-      <button onclick="loadOrders()" class="self-start sm:self-auto bg-slate-900 hover:bg-slate-800 text-white text-xs px-4 py-2.5 rounded-xl font-bold transition flex items-center gap-1.5">
+      <button onclick="loadOrders()" class="bg-slate-900 hover:bg-slate-800 text-white text-xs px-4 py-2.5 rounded-xl font-bold transition flex items-center gap-1.5">
         <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Refresh Data
       </button>
     </div>
@@ -57,7 +54,6 @@
       <button onclick="closeImageModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
         <i data-lucide="x" class="w-5 h-5"></i>
       </button>
-
       <h4 class="text-sm font-bold text-slate-800 mb-3">Foto Bukti Pembayaran</h4>
       <div class="bg-slate-50 p-2 rounded-2xl border border-slate-200 mb-2">
         <img id="modal-proof-img" src="" class="w-full h-auto max-h-[65vh] object-contain rounded-xl" />
@@ -67,30 +63,36 @@
 
   <script>
     lucide.createIcons();
+
+    // Firebase Database Realtime Endpoint
+    const FIREBASE_DB_URL = "https://esim-store-d7580-default-rtdb.europe-west1.firebasedatabase.app";
+
     let currentOrders = [];
 
     async function loadOrders() {
       try {
-        const res = await fetch('/api/admin');
-        currentOrders = await res.json();
+        const res = await fetch(`${FIREBASE_DB_URL}/orders.json`);
+        const data = await res.json();
         const tbody = document.getElementById('orders-table-body');
         tbody.innerHTML = '';
 
-        if (currentOrders.length === 0) {
+        if (!data) {
           tbody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-xs text-slate-400">Belum ada pesanan masuk.</td></tr>`;
           return;
         }
 
+        currentOrders = Object.values(data).reverse();
+
         currentOrders.forEach((o, index) => {
           const isPaid = o.status === 'PAID';
-          const hasProof = o.proof_image !== null;
+          const hasProof = !!o.proof_image;
 
           tbody.innerHTML += `
             <tr class="hover:bg-slate-50 transition">
               <td class="p-4 text-xs text-slate-400 whitespace-nowrap">${o.created_at}</td>
               <td class="p-4 font-mono text-xs font-bold text-slate-800 whitespace-nowrap">${o.order_id}</td>
               <td class="p-4 text-xs whitespace-nowrap">${o.package_name}</td>
-              <td class="p-4 font-bold text-indigo-600 whitespace-nowrap">Rp ${o.price.toLocaleString('id-ID')}</td>
+              <td class="p-4 font-bold text-indigo-600 whitespace-nowrap">Rp ${Number(o.price).toLocaleString('id-ID')}</td>
               <td class="p-4 text-xs font-semibold text-slate-700 whitespace-nowrap">${o.email}</td>
               <td class="p-4 text-center whitespace-nowrap">
                 ${hasProof 
@@ -118,7 +120,7 @@
         });
         lucide.createIcons();
       } catch (err) {
-        console.error('Error fetching admin orders:', err);
+        console.error(err);
       }
     }
 
@@ -135,15 +137,14 @@
     }
 
     async function verifyOrder(orderId) {
-      await fetch('/api/admin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId })
+      await fetch(`${FIREBASE_DB_URL}/orders/${orderId}/status.json`, {
+        method: 'PUT',
+        body: JSON.stringify('PAID')
       });
       loadOrders();
     }
 
-    setInterval(loadOrders, 3000);
+    setInterval(loadOrders, 2000);
     loadOrders();
   </script>
 </body>
