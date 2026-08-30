@@ -26,7 +26,6 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'GMAIL_PASS belum disetel di Environment Variables Vercel' });
   }
 
-  // Konfigurasi SMTP Gmail
   const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -35,7 +34,6 @@ export default async function handler(req, res) {
     }
   });
 
-  // Siapkan lampiran QR Code / PDF jika ada
   const attachments = [];
   if (qrCodeBase64) {
     const isPdf = qrCodeBase64.startsWith('data:application/pdf');
