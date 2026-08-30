@@ -629,21 +629,18 @@
       } catch (e) { console.error(e); }
     }
 
-    async function checkAdminOnlineStatus() {
-      try {
-        const res = await fetch(`${FIREBASE_DB_URL}/admin_heartbeat.json`);
-        const lastSeen = await res.json();
-        const now = Date.now();
-
-        if (lastSeen && (now - lastSeen < 8000)) {
-          setStoreStatus(true);
-        } else {
-          setStoreStatus(false);
-        }
-      } catch (err) {
-        setStoreStatus(false);
-      }
-    }
+  async function checkAdminOnlineStatus() {
+  try {
+    const res = await fetch(`${FIREBASE_DB_URL}/store_settings/is_open.json`);
+    const status = await res.json();
+    
+    // Jika belum pernah disetel, default toko Buka (true)
+    const isOnline = (status !== null) ? status : true;
+    setStoreStatus(isOnline);
+  } catch (err) {
+    setStoreStatus(true);
+  }
+}
 
     function setStoreStatus(online) {
       isStoreOnline = online;
