@@ -10,12 +10,21 @@ const ADMIN_NAMES = {
   "6654067367": "Admin 2"
 };
 
-// Target notifikasi broadcast
+// Target notifikasi broadcast (Grup + Japri Admin)
 const ALL_RECIPIENTS = [
   "-1004352073054", // Grup Telegram
   "8731786333",     // Japri Admin 1
   "6654067367"      // Japri Admin 2
 ];
+
+// Helper: Normalisasi Order ID (Ubah 0RD jadi ORD dan bersihkan tanda dash)
+function cleanOrderId(id) {
+  if (!id) return '';
+  return id
+    .toUpperCase()
+    .replace(/^0RD/i, 'ORD')
+    .replace(/[\u2013\u2014_]/g, '-');
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -26,7 +35,7 @@ export default async function handler(req, res) {
 
   try {
     // ==========================================
-    // 1. TANGANI COMMAND TEKS (/start, /cek, /pantau)
+    // 1. TANGANI COMMAND TEKS (/start, /cek, /pantau, /selesai)
     // ==========================================
     if (update.message && update.message.text) {
       const rawText = update.message.text.trim();
@@ -41,7 +50,8 @@ Bot ini berfungsi sebagai pusat monitoring & pemrosesan pesanan eSIM.
 📌 *Fitur & Perintah Bot:*
 • \`/pantau\` - Rekap ringkasan order & antrean
 • \`/cek ORD-XXXX\` - Cek detail status satu transaksi
-• 🛒 *Notifikasi Otomatis:* Bukti bayar otomatis dikirim ke sini
+• \`/selesai ORD-XXXX\` - Tandai order selesai manual
+• 🛒 *Notifikasi Otomatis:* Bukti bayar otomatis masuk ke grup ini
 • 📤 *Kirim eSIM:* Cukup *Reply* notifikasi dengan melampirkan file PDF / Foto QR Code eSIM
 
 _Bot siap digunakan._`;
@@ -58,10 +68,10 @@ _Bot siap digunakan._`;
         return res.status(200).json({ ok: true });
       }
 
-      // COMMAND /cek (Contoh: /cek ORD-1001)
+      // COMMAND /cek (Contoh: /cek ORD-559458 atau /cek 0RD-559458)
       if (text.startsWith('/cek')) {
         const parts = text.split(/\s+/);
-        const targetOrderId = parts[1] ? parts[1].trim().toUpperCase() : null;
+        let targetOrderId = parts[1] ? cleanOrderId(parts[1]) : null;
 
         if (!targetOrderId) {
           await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
@@ -69,15 +79,24 @@ _Bot siap digunakan._`;
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               chat_id: update.message.chat.id,
-              text: `⚠️ *Format salah!*\n\nGunakan: \`/cek ORD-XXXXX\`\nContoh: \`/cek ORD-1001\``,
+              text: `⚠️ *Format salah!*\n\nGunakan: \`/cek ORD-XXXXX\`\nContoh: \`/cek ORD-559458\``,
               parse_mode: 'Markdown'
             })
           });
           return res.status(200).json({ ok: true });
         }
 
-        const resData = await fetch(`${FIREBASE_DB_URL}/orders/${targetOrderId}.json`);
-        const order = await resData.json();
+        // Cari data dengan ID yang sudah dinormalisasi atau ID mentah aslinya
+        let resData = await fetch(`${FIREBASE_DB_URL}/orders/${targetOrderId}.json`);
+        let order = await resData.json();
+
+        // Fallback jika di database tersimpan sebagai 0RD
+        if (!order) {
+          const fallbackId = targetOrderId.replace(/^ORD/, '0RD');
+          resData = await fetch(`${FIREBASE_DB_URL}/orders/${fallbackId}.json`);
+          order = await resData.json();
+          if (order) targetOrderId = fallbackId;
+        }
 
         if (!order) {
           await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
@@ -112,6 +131,67 @@ _Bot siap digunakan._`;
           body: JSON.stringify({
             chat_id: update.message.chat.id,
             text: replyCek,
+            parse_mode: 'Markdown'
+          })
+        });
+        return res.status(200).json({ ok: true });
+      }
+
+      // COMMAND /selesai (Selesaikan transaksi manual tanpa reply file)
+      if (text.startsWith('/selesai')) {
+        const parts = text.split(/\s+/);
+        let targetOrderId = parts[1] ? cleanOrderId(parts[1]) : null;
+
+        if (!targetOrderId) {
+          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: update.message.chat.id,
+              text: `⚠️ *Format salah!*\n\nGunakan: \`/selesai ORD-XXXXX\``,
+              parse_mode: 'Markdown'
+            })
+          });
+          return res.status(200).json({ ok: true });
+        }
+
+        const senderName = update.message.from.first_name || 'Admin';
+
+        // Cek database
+        let resData = await fetch(`${FIREBASE_DB_URL}/orders/${targetOrderId}.json`);
+        let order = await resData.json();
+
+        if (!order) {
+          const fallbackId = targetOrderId.replace(/^ORD/, '0RD');
+          resData = await fetch(`${FIREBASE_DB_URL}/orders/${fallbackId}.json`);
+          order = await resData.json();
+          if (order) targetOrderId = fallbackId;
+        }
+
+        if (!order) {
+          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: update.message.chat.id,
+              text: `❌ Order \`${targetOrderId}\` tidak ditemukan di database.`,
+              parse_mode: 'Markdown'
+            })
+          });
+          return res.status(200).json({ ok: true });
+        }
+
+        await fetch(`${FIREBASE_DB_URL}/orders/${targetOrderId}/status.json`, {
+          method: 'PUT',
+          body: JSON.stringify('COMPLETED')
+        });
+
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: update.message.chat.id,
+            text: `✅ Status Order *#${targetOrderId}* berhasil diubah menjadi *COMPLETED / SELESAI* oleh *${senderName}*!`,
             parse_mode: 'Markdown'
           })
         });
@@ -174,10 +254,11 @@ _Ketik \`/cek ORD-ID\` untuk melihat rincian per order._`;
       const data = callback.data;
 
       if (data && data.startsWith('VERIFY_')) {
-        const orderId = data.replace('VERIFY_', '');
+        let orderId = data.replace('VERIFY_', '');
         const adminId = String(callback.from.id);
         const adminName = ADMIN_NAMES[adminId] || callback.from.first_name || 'Admin';
 
+        // Update status di Firebase
         await fetch(`${FIREBASE_DB_URL}/orders/${orderId}/status.json`, {
           method: 'PUT',
           body: JSON.stringify('PAID')
@@ -227,14 +308,25 @@ Silakan *REPLY (Balas)* pesan ini dengan melampirkan file **PDF** atau foto **QR
 
       const replyMsg = update.message.reply_to_message;
       const replyText = replyMsg.text || replyMsg.caption || "";
-      const match = replyText.match(/ORD-\d+/i);
+
+      // Regex fleksibel: membaca ORD/0RD dengan tanda dash strip apa pun
+      const match = replyText.match(/[O0]RD[-\u2013\u2014]\d+/i);
 
       if (match) {
-        const orderId = match[0].toUpperCase();
+        let orderId = cleanOrderId(match[0]);
         const executorName = ADMIN_NAMES[senderId] || update.message.from.first_name || 'Admin';
 
-        const orderRes = await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`);
-        const orderData = await orderRes.json();
+        // Cek Firebase
+        let orderRes = await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`);
+        let orderData = await orderRes.json();
+
+        // Fallback jika ID di database diawali angka 0
+        if (!orderData) {
+          const fallbackId = orderId.replace(/^ORD/, '0RD');
+          orderRes = await fetch(`${FIREBASE_DB_URL}/orders/${fallbackId}.json`);
+          orderData = await orderRes.json();
+          if (orderData) orderId = fallbackId;
+        }
 
         if (!orderData || !orderData.email) {
           await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
@@ -309,6 +401,7 @@ Silakan *REPLY (Balas)* pesan ini dengan melampirkan file **PDF** atau foto **QR
           }]
         });
 
+        // Update status di Firebase ke COMPLETED
         await fetch(`${FIREBASE_DB_URL}/orders/${orderId}/status.json`, {
           method: 'PUT',
           body: JSON.stringify('COMPLETED')
