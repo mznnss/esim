@@ -1,12 +1,9 @@
-// Database memori sementara di serverless
 global.orders = global.orders || [];
 
 export default function handler(req, res) {
-  // Aktifkan CORS
-  res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
+  res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -14,8 +11,12 @@ export default function handler(req, res) {
 
   if (req.method === 'POST') {
     const { package_name, price, email } = req.body;
-    const orderId = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
+    
+    if (!package_name || !price || !email) {
+      return res.status(400).json({ success: false, error: 'Data tidak lengkap' });
+    }
 
+    const orderId = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
     const newOrder = {
       order_id: orderId,
       package_name,
