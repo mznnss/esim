@@ -14,8 +14,7 @@ export default async function handler(req, res) {
   const { orderId, packageName, price, email, type } = req.body;
 
   const BOT_TOKEN = "8636838151:AAFpbytiio0xBSqW7hrqddhfLf3e2XwHrpY";
-  // Ganti angka di bawah ini dengan Chat ID dari @userinfobot
-  const CHAT_ID = process.env.TELEGRAM_CHAT_ID || "MASUKKAN_CHAT_ID_ANDA";
+  const CHAT_ID = "8731786333";
 
   let messageText = '';
 
