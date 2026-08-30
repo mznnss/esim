@@ -5,6 +5,8 @@ export default function handler(req, res) {
   const { orderId } = req.query;
   const order = global.orders.find(o => o.order_id === orderId);
 
-  if (!order) return res.status(404).json({ status: 'NOT_FOUND' });
+  if (!order) {
+    return res.status(404).json({ status: 'NOT_FOUND' });
+  }
   res.status(200).json({ status: order.status });
 }
