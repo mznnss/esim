@@ -22,12 +22,19 @@
         </div>
         <span class="font-extrabold text-xl tracking-tight text-slate-900">eSIM<span class="text-indigo-600">Go</span></span>
       </div>
-      <div class="flex items-center gap-2">
-        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-        <span class="text-xs font-bold text-slate-600">Layanan Aktif</span>
+
+      <!-- BADGE STATUS ADMIN REAL-TIME -->
+      <div id="admin-status-badge" class="flex items-center gap-2 px-3 py-1.5 rounded-full border bg-slate-100 text-slate-500 border-slate-200 transition-all duration-300">
+        <span id="status-dot" class="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
+        <span id="status-text" class="text-xs font-bold">Mengecek Status...</span>
       </div>
     </div>
   </nav>
+
+  <!-- BANNER TOKO TUTUP (MUNCUL OTOMATIS SAAT ADMIN OFFLINE) -->
+  <div id="store-closed-banner" class="hidden bg-rose-600 text-white text-center py-2.5 px-4 text-xs font-bold transition-all">
+    ⚠️ Toko sedang Offline / Tutup. Admin sedang tidak membuka dashboard pantau, pesanan ditutup sementara.
+  </div>
 
   <!-- HERO -->
   <header class="relative overflow-hidden pt-12 pb-16 bg-gradient-to-b from-indigo-50/60 via-white to-slate-50 border-b border-slate-200/60 text-center px-4">
@@ -87,7 +94,7 @@
             <span class="text-xs text-slate-400 block font-medium">Harga</span>
             <span class="text-xl font-extrabold text-indigo-600">Rp 145.000</span>
           </div>
-          <button onclick="openOrderModal('Jepang - 10 GB (7 Hari)', 145000)" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl transition text-sm flex items-center gap-1.5 shadow-sm">
+          <button onclick="openOrderModal('Jepang - 10 GB (7 Hari)', 145000)" class="btn-order bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl transition text-sm flex items-center gap-1.5 shadow-sm">
             Beli Sekarang <i data-lucide="arrow-right" class="w-4 h-4"></i>
           </button>
         </div>
@@ -118,7 +125,7 @@
             <span class="text-xs text-slate-400 block font-medium">Harga</span>
             <span class="text-xl font-extrabold text-indigo-600">Rp 85.000</span>
           </div>
-          <button onclick="openOrderModal('Singapura - Unlimited (5 Hari)', 85000)" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl transition text-sm flex items-center gap-1.5 shadow-sm">
+          <button onclick="openOrderModal('Singapura - Unlimited (5 Hari)', 85000)" class="btn-order bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl transition text-sm flex items-center gap-1.5 shadow-sm">
             Beli Sekarang <i data-lucide="arrow-right" class="w-4 h-4"></i>
           </button>
         </div>
@@ -149,7 +156,7 @@
             <span class="text-xs text-slate-400 block font-medium">Harga</span>
             <span class="text-xl font-extrabold text-indigo-600">Rp 320.000</span>
           </div>
-          <button onclick="openOrderModal('Eropa 33 Negara - 20 GB (30 Hari)', 320000)" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl transition text-sm flex items-center gap-1.5 shadow-sm">
+          <button onclick="openOrderModal('Eropa 33 Negara - 20 GB (30 Hari)', 320000)" class="btn-order bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl transition text-sm flex items-center gap-1.5 shadow-sm">
             Beli Sekarang <i data-lucide="arrow-right" class="w-4 h-4"></i>
           </button>
         </div>
@@ -280,9 +287,9 @@
   <script>
     lucide.createIcons();
 
-    // Firebase Database Realtime Endpoint
     const FIREBASE_DB_URL = "https://esim-store-d7580-default-rtdb.europe-west1.firebasedatabase.app";
 
+    let isStoreOnline = false;
     let currentPrice = 0;
     let currentPackage = '';
     let currentOrderId = '';
@@ -291,6 +298,64 @@
     let pollInterval = null;
 
     const modal = document.getElementById('checkout-modal');
+
+    // Cek Status Keaktifan Dashboard Admin (Real-Time Heartbeat)
+    async function checkAdminOnlineStatus() {
+      try {
+        const res = await fetch(`${FIREBASE_DB_URL}/admin_heartbeat.json`);
+        const lastSeen = await res.json();
+        const now = Date.now();
+
+        // Jika admin mengirim sinyal dalam 8 detik terakhir -> ONLINE
+        if (lastSeen && (now - lastSeen < 8000)) {
+          setStoreStatus(true);
+        } else {
+          setStoreStatus(false);
+        }
+      } catch (err) {
+        setStoreStatus(false);
+      }
+    }
+
+    function setStoreStatus(online) {
+      isStoreOnline = online;
+      const badge = document.getElementById('admin-status-badge');
+      const dot = document.getElementById('status-dot');
+      const text = document.getElementById('status-text');
+      const banner = document.getElementById('store-closed-banner');
+      const orderButtons = document.querySelectorAll('.btn-order');
+
+      if (online) {
+        badge.className = "flex items-center gap-2 px-3 py-1.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200 transition-all";
+        dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse";
+        text.innerText = "Admin Online (Buka)";
+        banner.classList.add('hidden');
+
+        orderButtons.forEach(btn => {
+          btn.disabled = false;
+          btn.classList.remove('bg-slate-400', 'cursor-not-allowed', 'opacity-60');
+          btn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
+          btn.innerHTML = `Beli Sekarang <i data-lucide="arrow-right" class="w-4 h-4"></i>`;
+        });
+      } else {
+        badge.className = "flex items-center gap-2 px-3 py-1.5 rounded-full border bg-rose-50 text-rose-700 border-rose-200 transition-all";
+        dot.className = "w-2.5 h-2.5 rounded-full bg-rose-500";
+        text.innerText = "Admin Offline (Tutup)";
+        banner.classList.remove('hidden');
+
+        orderButtons.forEach(btn => {
+          btn.disabled = true;
+          btn.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
+          btn.classList.add('bg-slate-400', 'cursor-not-allowed', 'opacity-60');
+          btn.innerText = "Tutup Sementara";
+        });
+      }
+      lucide.createIcons();
+    }
+
+    // Interval cek status online setiap 3 detik
+    setInterval(checkAdminOnlineStatus, 3000);
+    checkAdminOnlineStatus();
 
     function filterDestinations() {
       const query = document.getElementById('search-input').value.toLowerCase();
@@ -301,6 +366,11 @@
     }
 
     function openOrderModal(packageName, price) {
+      if (!isStoreOnline) {
+        alert('Maaf, toko sedang tutup karena admin sedang offline.');
+        return;
+      }
+
       currentPackage = packageName;
       currentPrice = price;
       document.getElementById('m-package').value = packageName;
