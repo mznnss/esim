@@ -17,7 +17,6 @@ const ALL_RECIPIENTS = [
   "6654067367"
 ];
 
-// Helper: Normalisasi Order ID
 function cleanOrderId(id) {
   if (!id) return '';
   return id
@@ -26,7 +25,6 @@ function cleanOrderId(id) {
     .replace(/[\u2013\u2014_]/g, '-');
 }
 
-// Helper: Format Waktu Jakarta (WIB)
 function getWIBTimeString() {
   return new Intl.DateTimeFormat('id-ID', {
     timeZone: 'Asia/Jakarta',
@@ -37,7 +35,6 @@ function getWIBTimeString() {
   }).format(new Date()) + ' WIB';
 }
 
-// Helper: Kirim Pesan Telegram Teks
 async function sendTelegramMsg(chatId, text, replyMarkup = undefined, replyId = undefined) {
   return fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
     method: 'POST',
@@ -52,7 +49,6 @@ async function sendTelegramMsg(chatId, text, replyMarkup = undefined, replyId = 
   });
 }
 
-// Helper: Gabungkan semua atribut paket sesuai data tabel web (Nama, Kuota, Provider)
 function formatFullPackageName(item) {
   if (!item || typeof item !== 'object') return 'eSIM Package';
 
@@ -87,13 +83,10 @@ export default async function handler(req, res) {
     // 1. AREA ADMIN (KHUSUS DI DALAM GRUP ADMIN)
     // ========================================================
     if (isGroup && isRegisteredAdmin) {
-
-      // 1.1 COMMAND TEKS ADMIN (/start, /pantau, /cek, /selesai)
       if (update.message && update.message.text) {
         const rawText = update.message.text.trim();
         const text = rawText.replace(/@goesimidbot/gi, '').trim();
 
-        // /start di grup
         if (text.startsWith('/start')) {
           const startMessage = `👋 *Halo! Selamat Datang di Bot eSIMGo Admin*
 
@@ -111,7 +104,6 @@ _Bot siap beroperasi di grup._`;
           return res.status(200).json({ ok: true });
         }
 
-        // /cek
         if (text.startsWith('/cek')) {
           const parts = text.split(/\s+/);
           let targetOrderId = parts[1] ? cleanOrderId(parts[1]) : null;
@@ -155,7 +147,6 @@ _Bot siap beroperasi di grup._`;
           return res.status(200).json({ ok: true });
         }
 
-        // /selesai
         if (text.startsWith('/selesai')) {
           const parts = text.split(/\s+/);
           let targetOrderId = parts[1] ? cleanOrderId(parts[1]) : null;
@@ -195,7 +186,6 @@ _Bot siap beroperasi di grup._`;
           return res.status(200).json({ ok: true });
         }
 
-        // /pantau atau /rekap
         if (text.startsWith('/pantau') || text.startsWith('/rekap')) {
           const resAll = await fetch(`${FIREBASE_DB_URL}/orders.json`);
           const allOrders = (await resAll.json()) || {};
@@ -236,7 +226,7 @@ _Ketik \`/cek ORD-ID\` untuk melihat rincian per order._`;
         }
       }
 
-      // 1.2 KLIK TOMBOL VERIFIKASI LUNAS
+      // 1.2 KLIK VERIFIKASI LUNAS
       if (update.callback_query && update.callback_query.data.startsWith('VERIFY_')) {
         let orderId = update.callback_query.data.replace('VERIFY_', '');
         const adminName = ADMIN_NAMES[senderIdStr] || update.callback_query.from.first_name || 'Admin';
@@ -444,26 +434,72 @@ _QR Code / PDF telah sukses terkirim ke email & Telegram pembeli._`;
 
       // 2.1 PEMBELI KLIK /start
       if (text.startsWith('/start')) {
+        const resDb = await fetch(`${FIREBASE_DB_URL}/products.json`);
+        const dbProducts = (await resDb.json()) || {};
+
+        let pricelistText = "";
+        const extractPricelist = (item) => {
+          if (!item || typeof item !== 'object') return;
+          const isInactive = item.active === false || item.is_active === false || item.status === 'inactive';
+          if (isInactive) return;
+
+          const fullName = formatFullPackageName(item);
+          const price = item.price || item.nominal || item.harga || 0;
+          const duration = item.duration || item.validity || '';
+
+          pricelistText += `🔹 *${fullName}*\n`;
+          if (duration) {
+            pricelistText += `   ⏱ _Masa Aktif:_ ${duration}\n`;
+          }
+          pricelistText += `   💰 *Harga:* Rp ${Number(price).toLocaleString('id-ID')}\n\n`;
+        };
+
+        if (Array.isArray(dbProducts)) {
+          dbProducts.forEach(item => extractPricelist(item));
+        } else {
+          Object.values(dbProducts).forEach(item => {
+            if (item && typeof item === 'object' && !item.name && !item.title && !item.price && !item.country) {
+              Object.values(item).forEach(subItem => extractPricelist(subItem));
+            } else {
+              extractPricelist(item);
+            }
+          });
+        }
+
+        const greetingMessage = `👋 *Halo! Selamat Datang di eSIMGo Store* 🌏
+Internetan hemat & roaming cepat di luar negeri tanpa perlu repot ganti kartu fisik!
+
+📋 *DAFTAR PAKET & HARGA ESIM:*
+━━━━━━━━━━━━━━━━━━
+${pricelistText || '_Belum ada paket yang aktif saat ini._'}━━━━━━━━━━━━━━━━━━
+⚡ *Kelebihan eSIMGo:*
+• QR Code langsung dikirim otomatis via Telegram & Email
+• Tanpa kartu fisik, langsung scan & aktif
+• Garansi koneksi stabil
+
+Silakan klik tombol di bawah untuk memesan:`;
+
         const welcomeKeyboard = {
           inline_keyboard: [
-            [{ text: "🛍 Beli Paket eSIM", callback_data: "BUY_MENU" }],
-            [{ text: "📦 Cek Status Pesanan", callback_data: "BUY_STATUS" }]
+            [{ text: "🛍 Beli Paket eSIM Sekarang", callback_data: "BUY_MENU" }],
+            [
+              { text: "📦 Cek Status Pesanan", callback_data: "BUY_STATUS" },
+              { text: "💬 Bantuan CS", callback_data: "BUY_HELP" }
+            ]
           ]
         };
-        await sendTelegramMsg(buyerChatId, `👋 *Halo! Selamat Datang di eSIMGo Store*
 
-Mau internetan hemat & roaming super cepat di luar negeri tanpa repot ganti kartu fisik?
-Silakan pilih menu di bawah untuk memulai:`, welcomeKeyboard);
+        await sendTelegramMsg(buyerChatId, greetingMessage, welcomeKeyboard);
         return res.status(200).json({ ok: true });
       }
 
-      // 2.2 COMMAND KHUSUS PEMBELI: /status
+      // 2.2 COMMAND /status
       if (text.startsWith('/status') || (update.callback_query && update.callback_query.data === "BUY_STATUS")) {
         const resOrders = await (await fetch(`${FIREBASE_DB_URL}/orders.json`)).json() || {};
         const myOrders = Object.entries(resOrders).filter(([_, o]) => o && String(o.buyer_chat_id) === String(buyerChatId));
 
         if (myOrders.length === 0) {
-          await sendTelegramMsg(buyerChatId, `ℹ️ Anda belum memiliki riwayat pesanan di akun ini.\n\nKetik /start lalu klik *🛍 Beli Paket eSIM* untuk memesan.`);
+          await sendTelegramMsg(buyerChatId, `ℹ️ Anda belum memiliki riwayat pesanan di akun ini.\n\nKetik /start lalu klik *🛍 Beli Paket eSIM Sekarang* untuk memesan.`);
           return res.status(200).json({ ok: true });
         }
 
@@ -482,19 +518,19 @@ Silakan pilih menu di bawah untuk memulai:`, welcomeKeyboard);
         return res.status(200).json({ ok: true });
       }
 
-      // 2.3 COMMAND KHUSUS PEMBELI: /bantuan
-      if (text.startsWith('/bantuan')) {
+      // 2.3 COMMAND /bantuan (CS @rifkyyw)
+      if (text.startsWith('/bantuan') || (update.callback_query && update.callback_query.data === "BUY_HELP")) {
         await sendTelegramMsg(buyerChatId, `💬 *PUSAT BANTUAN & CS ESIMGO*
 ━━━━━━━━━━━━━━━━━━
-Jika Anda mengalami kendala pembayaran atau instalasi eSIM, hubungi admin kami melalui:
-• 👤 *Customer Support:* @mznnss
+Jika Anda mengalami kendala pembayaran atau instalasi eSIM, hubungi customer service kami melalui:
+• 👤 *Customer Support:* @rifkyyw
 • ⏱ *Jam Operasional:* 08.00 - 23.00 WIB
 
 _Sertakan Order ID Anda jika ingin menanyakan status pesanan._`);
         return res.status(200).json({ ok: true });
       }
 
-      // 2.4 PEMBELI PILIH PAKET (LENGKAP DENGAN KUOTA & DURASI)
+      // 2.4 PEMBELI PILIH PAKET
       if (update.callback_query && update.callback_query.data === "BUY_MENU") {
         const resDb = await fetch(`${FIREBASE_DB_URL}/products.json`);
         const dbProducts = (await resDb.json()) || {};
@@ -533,11 +569,11 @@ _Sertakan Order ID Anda jika ingin menanyakan status pesanan._`);
           return res.status(200).json({ ok: true });
         }
 
-        await sendTelegramMsg(buyerChatId, `🌏 *Pilih Paket eSIM yang Anda Butuhkan:*`, { inline_keyboard: pkgButtons });
+        await sendTelegramMsg(buyerChatId, `🌏 *Pilih Paket eSIM yang Ingin Anda Beli:*`, { inline_keyboard: pkgButtons });
         return res.status(200).json({ ok: true });
       }
 
-      // Saat tombol paket ditekan
+      // Saat salah satu paket dipilih
       if (update.callback_query && update.callback_query.data.startsWith('SELECT_')) {
         const pkgKey = update.callback_query.data.replace('SELECT_', '');
         
@@ -578,7 +614,7 @@ _Sertakan Order ID Anda jika ingin menanyakan status pesanan._`);
         return res.status(200).json({ ok: true });
       }
 
-      // 2.5 INPUT EMAIL
+      // 2.5 INPUT EMAIL & MENAMPILKAN INVOICE + QRIS
       if (text.includes('@') && text.includes('.')) {
         const resOrders = await (await fetch(`${FIREBASE_DB_URL}/orders.json`)).json() || {};
         const draftOrder = Object.entries(resOrders).reverse().find(([_, o]) => o.buyer_chat_id === buyerChatId && o.status === 'DRAFT_EMAIL');
@@ -627,7 +663,7 @@ Silakan transfer lalu *KIRIMKAN FOTO BUKTI PEMBAYARAN* ke chat ini.`;
         }
       }
 
-      // 2.6 UPLOAD BUKTI TRANSFER (DISIMPAN KE FIREBASE)
+      // 2.6 UPLOAD BUKTI TRANSFER
       if (update.message?.photo) {
         const resOrders = await (await fetch(`${FIREBASE_DB_URL}/orders.json`)).json() || {};
         const pendingOrder = Object.entries(resOrders).reverse().find(([_, o]) => o.buyer_chat_id === buyerChatId && o.status === 'PENDING');
@@ -640,7 +676,6 @@ Silakan transfer lalu *KIRIMKAN FOTO BUKTI PEMBAYARAN* ke chat ini.`;
         const [orderId, orderInfo] = pendingOrder;
         const photoId = update.message.photo[update.message.photo.length - 1].file_id;
 
-        // Ambil URL publik foto bukti bayar dari Telegram API
         let proofUrl = "";
         try {
           const fileInfoRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${photoId}`);
@@ -649,10 +684,9 @@ Silakan transfer lalu *KIRIMKAN FOTO BUKTI PEMBAYARAN* ke chat ini.`;
             proofUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${fileInfo.result.file_path}`;
           }
         } catch (e) {
-          console.error("Gagal mendapatkan link foto bukti:", e);
+          console.error("Gagal getFile bukti:", e);
         }
 
-        // SIMPAN LINK BUKTI BAYAR KE DATABASE FIREBASE
         await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, {
           method: 'PATCH',
           body: JSON.stringify({
@@ -661,7 +695,6 @@ Silakan transfer lalu *KIRIMKAN FOTO BUKTI PEMBAYARAN* ke chat ini.`;
           })
         });
 
-        // Forward foto bukti ke Grup Admin
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
