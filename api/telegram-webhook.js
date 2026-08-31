@@ -1,4 +1,3 @@
-
 import nodemailer from 'nodemailer';
 
 const BOT_TOKEN = "8636838151:AAFpbytiio0xBSqW7hrqddhfLf3e2XwHrpY";
@@ -18,6 +17,7 @@ const ALL_RECIPIENTS = [
   "6654067367"
 ];
 
+// Helper: Normalisasi Order ID
 function cleanOrderId(id) {
   if (!id) return '';
   return id
@@ -26,6 +26,18 @@ function cleanOrderId(id) {
     .replace(/[\u2013\u2014_]/g, '-');
 }
 
+// Helper: Format Waktu Jakarta (WIB)
+function getWIBTimeString() {
+  return new Intl.DateTimeFormat('id-ID', {
+    timeZone: 'Asia/Jakarta',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  }).format(new Date()) + ' WIB';
+}
+
+// Helper: Kirim Pesan Telegram Teks
 async function sendTelegramMsg(chatId, text, replyMarkup = undefined, replyId = undefined) {
   return fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
     method: 'POST',
@@ -40,17 +52,23 @@ async function sendTelegramMsg(chatId, text, replyMarkup = undefined, replyId = 
   });
 }
 
-// Helper: Gabungkan Nama + Kuota/Durasi secara dinamis
+// Helper: Gabungkan semua atribut paket sesuai data tabel web (Nama, Kuota, Provider)
 function formatFullPackageName(item) {
   if (!item || typeof item !== 'object') return 'eSIM Package';
-  
-  const baseName = item.name || item.title || item.country || item.package_name || item.nama || 'eSIM';
-  const detail = item.quota || item.desc || item.description || item.detail || item.duration || item.validity || item.note || '';
-  
-  if (detail && !baseName.toLowerCase().includes(detail.toLowerCase())) {
-    return `${baseName} - ${detail}`;
+
+  const name = item.name || item.title || item.country || item.category || 'ASIA';
+  const quota = item.quota || item.speed || item.desc || item.description || '';
+  const provider = item.provider || item.operator || item.network || '';
+
+  let label = name;
+  if (quota) {
+    label += ` - ${quota}`;
   }
-  return baseName;
+  if (provider) {
+    label += ` (${provider})`;
+  }
+
+  return label;
 }
 
 export default async function handler(req, res) {
@@ -70,10 +88,12 @@ export default async function handler(req, res) {
     // ========================================================
     if (isGroup && isRegisteredAdmin) {
 
+      // 1.1 COMMAND TEKS ADMIN (/start, /pantau, /cek, /selesai)
       if (update.message && update.message.text) {
         const rawText = update.message.text.trim();
         const text = rawText.replace(/@goesimidbot/gi, '').trim();
 
+        // /start di grup
         if (text.startsWith('/start')) {
           const startMessage = `👋 *Halo! Selamat Datang di Bot eSIMGo Admin*
 
@@ -91,6 +111,7 @@ _Bot siap beroperasi di grup._`;
           return res.status(200).json({ ok: true });
         }
 
+        // /cek
         if (text.startsWith('/cek')) {
           const parts = text.split(/\s+/);
           let targetOrderId = parts[1] ? cleanOrderId(parts[1]) : null;
@@ -134,6 +155,7 @@ _Bot siap beroperasi di grup._`;
           return res.status(200).json({ ok: true });
         }
 
+        // /selesai
         if (text.startsWith('/selesai')) {
           const parts = text.split(/\s+/);
           let targetOrderId = parts[1] ? cleanOrderId(parts[1]) : null;
@@ -160,15 +182,20 @@ _Bot siap beroperasi di grup._`;
             return res.status(200).json({ ok: true });
           }
 
-          await fetch(`${FIREBASE_DB_URL}/orders/${targetOrderId}/status.json`, {
-            method: 'PUT',
-            body: JSON.stringify('COMPLETED')
+          await fetch(`${FIREBASE_DB_URL}/orders/${targetOrderId}.json`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+              status: 'COMPLETED',
+              completed_by: senderName,
+              completed_at: new Date().toISOString()
+            })
           });
 
           await sendTelegramMsg(update.message.chat.id, `✅ Status Order *#${targetOrderId}* berhasil diselesaikan oleh *${senderName}*!`);
           return res.status(200).json({ ok: true });
         }
 
+        // /pantau atau /rekap
         if (text.startsWith('/pantau') || text.startsWith('/rekap')) {
           const resAll = await fetch(`${FIREBASE_DB_URL}/orders.json`);
           const allOrders = (await resAll.json()) || {};
@@ -209,14 +236,18 @@ _Ketik \`/cek ORD-ID\` untuk melihat rincian per order._`;
         }
       }
 
-      // Verifikasi Lunas
+      // 1.2 KLIK TOMBOL VERIFIKASI LUNAS
       if (update.callback_query && update.callback_query.data.startsWith('VERIFY_')) {
         let orderId = update.callback_query.data.replace('VERIFY_', '');
         const adminName = ADMIN_NAMES[senderIdStr] || update.callback_query.from.first_name || 'Admin';
 
-        await fetch(`${FIREBASE_DB_URL}/orders/${orderId}/status.json`, {
-          method: 'PUT',
-          body: JSON.stringify('PAID')
+        await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            status: 'PAID',
+            verified_by: adminName,
+            verified_at: new Date().toISOString()
+          })
         });
 
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/editMessageReplyMarkup`, {
@@ -250,7 +281,7 @@ Silakan *REPLY (Balas)* pesan ini dengan melampirkan file **PDF** atau foto **QR
         return res.status(200).json({ ok: true });
       }
 
-      // Admin Reply File QR/PDF
+      // 1.3 ADMIN REPLY FILE QR/PDF DI GRUP
       if (update.message && (update.message.document || update.message.photo) && update.message.reply_to_message) {
         const replyText = update.message.reply_to_message.text || update.message.reply_to_message.caption || "";
         const match = replyText.match(/[O0]RD[-\u2013\u2014]\d+/i);
@@ -284,7 +315,7 @@ Silakan *REPLY (Balas)* pesan ini dengan melampirkan file **PDF** atau foto **QR
           const downloadUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${filePath}`;
           const fileBuffer = Buffer.from(await (await fetch(downloadUrl)).arrayBuffer());
 
-          // Kirim ke Telegram Pembeli
+          // Kirim ke Chat Pribadi Pembeli
           if (orderData.buyer_chat_id) {
             const buyerCaption = `🎉 *PROFIL ESIM ANDA SIAP!*
 ━━━━━━━━━━━━━━━━━━
@@ -369,18 +400,18 @@ ${adminNote ? `\n📝 *Catatan Admin:*\n${adminNote}\n` : ''}
             });
           }
 
+          // Update Firebase ke COMPLETED
           await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, {
             method: 'PATCH',
-            body: JSON.stringify({ status: 'COMPLETED', admin_note: adminNote || null })
+            body: JSON.stringify({
+              status: 'COMPLETED',
+              admin_note: adminNote || null,
+              completed_by: executorName,
+              completed_at: new Date().toISOString()
+            })
           });
 
-          const nowWIB = new Intl.DateTimeFormat('id-ID', {
-            timeZone: 'Asia/Jakarta',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: false
-          }).format(new Date());
+          const nowWIB = getWIBTimeString();
 
           const successBroadcastMessage = `🚀 *TRANSAKSI SELESAI & TERKIRIM!*
 ━━━━━━━━━━━━━━━━━━
@@ -390,7 +421,7 @@ ${adminNote ? `\n📝 *Catatan Admin:*\n${adminNote}\n` : ''}
 📎 *File:* \`${fileName}\`
 📝 *Catatan:* ${adminNote ? `_${adminNote}_` : '_Tidak ada catatan_'}
 👤 *Diproses oleh:* *${executorName}*
-⏱ *Waktu:* ${nowWIB} WIB
+⏱ *Waktu:* ${nowWIB}
 
 _QR Code / PDF telah sukses terkirim ke email & Telegram pembeli._`;
 
@@ -411,7 +442,7 @@ _QR Code / PDF telah sukses terkirim ke email & Telegram pembeli._`;
       const buyerChatId = update.message?.chat?.id || update.callback_query?.message?.chat?.id;
       const text = update.message?.text || "";
 
-      // 2.1 /start
+      // 2.1 PEMBELI KLIK /start
       if (text.startsWith('/start')) {
         const welcomeKeyboard = {
           inline_keyboard: [
@@ -426,7 +457,7 @@ Silakan pilih menu di bawah untuk memulai:`, welcomeKeyboard);
         return res.status(200).json({ ok: true });
       }
 
-      // 2.2 /status
+      // 2.2 COMMAND KHUSUS PEMBELI: /status
       if (text.startsWith('/status') || (update.callback_query && update.callback_query.data === "BUY_STATUS")) {
         const resOrders = await (await fetch(`${FIREBASE_DB_URL}/orders.json`)).json() || {};
         const myOrders = Object.entries(resOrders).filter(([_, o]) => o && String(o.buyer_chat_id) === String(buyerChatId));
@@ -451,7 +482,7 @@ Silakan pilih menu di bawah untuk memulai:`, welcomeKeyboard);
         return res.status(200).json({ ok: true });
       }
 
-      // 2.3 /bantuan
+      // 2.3 COMMAND KHUSUS PEMBELI: /bantuan
       if (text.startsWith('/bantuan')) {
         await sendTelegramMsg(buyerChatId, `💬 *PUSAT BANTUAN & CS ESIMGO*
 ━━━━━━━━━━━━━━━━━━
@@ -533,11 +564,13 @@ _Sertakan Order ID Anda jika ingin menanyakan status pesanan._`);
         await fetch(`${FIREBASE_DB_URL}/orders/${newOrderId}.json`, {
           method: 'PUT',
           body: JSON.stringify({
+            order_id: newOrderId,
             package_name: pkgFullName,
             price: pkgPrice,
             buyer_chat_id: buyerChatId,
             status: 'DRAFT_EMAIL',
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
+            waktu: getWIBTimeString()
           })
         });
 
@@ -594,7 +627,7 @@ Silakan transfer lalu *KIRIMKAN FOTO BUKTI PEMBAYARAN* ke chat ini.`;
         }
       }
 
-      // 2.6 UPLOAD BUKTI TRANSFER
+      // 2.6 UPLOAD BUKTI TRANSFER (DISIMPAN KE FIREBASE)
       if (update.message?.photo) {
         const resOrders = await (await fetch(`${FIREBASE_DB_URL}/orders.json`)).json() || {};
         const pendingOrder = Object.entries(resOrders).reverse().find(([_, o]) => o.buyer_chat_id === buyerChatId && o.status === 'PENDING');
@@ -607,6 +640,28 @@ Silakan transfer lalu *KIRIMKAN FOTO BUKTI PEMBAYARAN* ke chat ini.`;
         const [orderId, orderInfo] = pendingOrder;
         const photoId = update.message.photo[update.message.photo.length - 1].file_id;
 
+        // Ambil URL publik foto bukti bayar dari Telegram API
+        let proofUrl = "";
+        try {
+          const fileInfoRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${photoId}`);
+          const fileInfo = await fileInfoRes.json();
+          if (fileInfo.ok && fileInfo.result.file_path) {
+            proofUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${fileInfo.result.file_path}`;
+          }
+        } catch (e) {
+          console.error("Gagal mendapatkan link foto bukti:", e);
+        }
+
+        // SIMPAN LINK BUKTI BAYAR KE DATABASE FIREBASE
+        await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            payment_proof_url: proofUrl || null,
+            proof_uploaded_at: new Date().toISOString()
+          })
+        });
+
+        // Forward foto bukti ke Grup Admin
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
