@@ -52,10 +52,10 @@ export default async function handler(req, res) {
     const isRegisteredAdmin = Object.keys(ADMIN_NAMES).includes(senderIdStr);
 
     // ========================================================
-    // 1. AREA ADMIN (GRUP ADMIN)
+    // 1. AREA ADMIN (KHUSUS DI GRUP ESIM WEBSITE)
     // ========================================================
     if (isGroup && isRegisteredAdmin) {
-      // 1.1 COMMAND TEKS DI GRUP
+      // 1.1 COMMAND TEKS ADMIN
       if (update.message && update.message.text) {
         const rawText = update.message.text.trim();
         const text = rawText.replace(/@goesimidbot/gi, '').trim();
@@ -195,7 +195,7 @@ _Ketik \`/cek ORD-ID\` untuk melihat rincian per order._`;
         }
       }
 
-      // 1.2 KLIK VERIFIKASI LUNAS
+      // 1.2 KLIK TOMBOL VERIFIKASI LUNAS
       if (update.callback_query && update.callback_query.data.startsWith('VERIFY_')) {
         let orderId = update.callback_query.data.replace('VERIFY_', '');
         const adminName = ADMIN_NAMES[senderIdStr] || update.callback_query.from.first_name || 'Admin';
@@ -298,7 +298,7 @@ ${adminNote ? `\n📝 *Catatan Admin:*\n${adminNote}\n` : ''}
             }
           }
 
-          // Kirim Email Dark Mode
+          // Kirim Email Dark Mode Persis Web
           if (orderData.email) {
             const noteHtmlBlock = adminNote ? `
               <div style="background-color: #1e293b; border-left: 3px solid #38bdf8; border-radius: 6px; padding: 12px 14px; margin-bottom: 20px;">
@@ -355,7 +355,7 @@ ${adminNote ? `\n📝 *Catatan Admin:*\n${adminNote}\n` : ''}
             });
           }
 
-          // Update DB
+          // Update Firebase ke COMPLETED
           await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, {
             method: 'PATCH',
             body: JSON.stringify({ status: 'COMPLETED', admin_note: adminNote || null })
@@ -392,7 +392,7 @@ _QR Code / PDF telah sukses terkirim ke email & Telegram pembeli._`;
     }
 
     // ========================================================
-    // 2. AREA PEMBELI (CHAT PRIBADI PEMBELI / JAPRI BOT)
+    // 2. AREA PEMBELI (CHAT PRIBADI / JAPRI BOT)
     // ========================================================
     if (isPrivate) {
       const buyerChatId = update.message?.chat?.id || update.callback_query?.message?.chat?.id;
@@ -412,15 +412,15 @@ Silakan klik tombol di bawah untuk memilih paket eSIM:`, welcomeKeyboard);
         return res.status(200).json({ ok: true });
       }
 
-      // 2.2 PEMBELI PILIH PAKET (DIAMBIL DARI FIREBASE /packages)
+      // 2.2 PEMBELI PILIH PAKET (DIAMBIL DARI FIREBASE /products)
       if (update.callback_query && update.callback_query.data === "BUY_MENU") {
-        const resDb = await fetch(`${FIREBASE_DB_URL}/packages.json`);
-        const dbPackages = await resDb.json() || {};
+        const resDb = await fetch(`${FIREBASE_DB_URL}/products.json`);
+        const dbProducts = (await resDb.json()) || {};
 
-        const pkgButtons = Object.entries(dbPackages)
-          .filter(([_, item]) => item && (item.active === undefined || item.active === true))
+        const pkgButtons = Object.entries(dbProducts)
+          .filter(([_, item]) => item && (item.active === undefined || item.active === true || item.status === 'active'))
           .map(([key, item]) => [
-            { text: `${item.name} - Rp ${Number(item.price).toLocaleString('id-ID')}`, callback_data: `SELECT_${key}` }
+            { text: `${item.name || item.title} - Rp ${Number(item.price).toLocaleString('id-ID')}`, callback_data: `SELECT_${key}` }
           ]);
 
         if (pkgButtons.length === 0) {
@@ -435,8 +435,7 @@ Silakan klik tombol di bawah untuk memilih paket eSIM:`, welcomeKeyboard);
       if (update.callback_query && update.callback_query.data.startsWith('SELECT_')) {
         const pkgKey = update.callback_query.data.replace('SELECT_', '');
         
-        // Ambil data paket langsung dari Firebase
-        const resDb = await fetch(`${FIREBASE_DB_URL}/packages/${pkgKey}.json`);
+        const resDb = await fetch(`${FIREBASE_DB_URL}/products/${pkgKey}.json`);
         const selected = await resDb.json();
 
         if (!selected) {
@@ -444,12 +443,13 @@ Silakan klik tombol di bawah untuk memilih paket eSIM:`, welcomeKeyboard);
           return res.status(200).json({ ok: true });
         }
 
+        const pkgName = selected.name || selected.title;
         const newOrderId = `ORD-${Math.floor(100000 + Math.random() * 900000)}`;
 
         await fetch(`${FIREBASE_DB_URL}/orders/${newOrderId}.json`, {
           method: 'PUT',
           body: JSON.stringify({
-            package_name: selected.name,
+            package_name: pkgName,
             price: selected.price,
             buyer_chat_id: buyerChatId,
             status: 'DRAFT_EMAIL',
@@ -457,11 +457,11 @@ Silakan klik tombol di bawah untuk memilih paket eSIM:`, welcomeKeyboard);
           })
         });
 
-        await sendTelegramMsg(buyerChatId, `👌 Anda memilih paket: *${selected.name}*\n\nKetik dan kirimkan *ALAMAT EMAIL* Anda sekarang untuk pengiriman cadangan profil eSIM:`);
+        await sendTelegramMsg(buyerChatId, `👌 Anda memilih paket: *${pkgName}*\n\nKetik dan kirimkan *ALAMAT EMAIL* Anda sekarang untuk pengiriman cadangan profil eSIM:`);
         return res.status(200).json({ ok: true });
       }
 
-      // 2.3 PEMBELI INPUT EMAIL (AMBIL SETTINGS PEMBAYARAN DARI FIREBASE /settings)
+      // 2.3 PEMBELI INPUT EMAIL (AMBIL SETTINGS PEMBAYARAN DARI FIREBASE /store_settings)
       if (text.includes('@') && text.includes('.')) {
         const resOrders = await (await fetch(`${FIREBASE_DB_URL}/orders.json`)).json() || {};
         const draftOrder = Object.entries(resOrders).reverse().find(([_, o]) => o.buyer_chat_id === buyerChatId && o.status === 'DRAFT_EMAIL');
@@ -475,10 +475,10 @@ Silakan klik tombol di bawah untuk memilih paket eSIM:`, welcomeKeyboard);
             body: JSON.stringify({ email: userEmail, status: 'PENDING' })
           });
 
-          // Ambil pengaturan Rekening/QRIS dinamis dari Firebase
-          const resSettings = await (await fetch(`${FIREBASE_DB_URL}/settings.json`)).json() || {};
-          const paymentText = resSettings.payment_info || "• BCA: 1234567890 (a/n eSIMGo)\n• DANA / QRIS: 081234567890";
-          const qrisImageUrl = resSettings.qris_image_url;
+          // Ambil pengaturan Rekening/QRIS dari node store_settings
+          const resSettings = (await (await fetch(`${FIREBASE_DB_URL}/store_settings.json`)).json()) || {};
+          const paymentText = resSettings.payment_info || "• Pembayaran via QRIS (Semua E-Wallet & Mobile Banking)\n• Silakan scan barcode di atas";
+          const qrisImageUrl = resSettings.qris_image_url || "https://goesim.vercel.app/qris.jpg";
 
           const invoiceMessage = `📋 *INVOICE PEMBAYARAN*
 ━━━━━━━━━━━━━━━━━━
@@ -487,13 +487,12 @@ Silakan klik tombol di bawah untuk memilih paket eSIM:`, welcomeKeyboard);
 💰 *Total Tagihan:* *Rp ${Number(orderInfo.price).toLocaleString('id-ID')}*
 📧 *Email Pengiriman:* ${userEmail}
 ━━━━━━━━━━━━━━━━━━
-💳 *Metode Pembayaran Transfer / QRIS:*
+💳 *Metode Pembayaran:*
 ${paymentText}
 
 Silakan transfer lalu *KIRIMKAN FOTO BUKTI PEMBAYARAN* ke chat ini.`;
 
           if (qrisImageUrl) {
-            // Jika ada gambar QRIS di database, kirim gambarnya beserta invoice
             await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -505,7 +504,6 @@ Silakan transfer lalu *KIRIMKAN FOTO BUKTI PEMBAYARAN* ke chat ini.`;
               })
             });
           } else {
-            // Jika tidak ada gambar, kirim format teks invoice biasa
             await sendTelegramMsg(buyerChatId, invoiceMessage);
           }
 
@@ -526,7 +524,7 @@ Silakan transfer lalu *KIRIMKAN FOTO BUKTI PEMBAYARAN* ke chat ini.`;
         const [orderId, orderInfo] = pendingOrder;
         const photoId = update.message.photo[update.message.photo.length - 1].file_id;
 
-        // Forward bukti ke Grup Admin
+        // Forward bukti bayar ke Grup Admin
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
