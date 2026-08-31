@@ -1,3 +1,4 @@
+
 import nodemailer from 'nodemailer';
 
 const BOT_TOKEN = "8636838151:AAFpbytiio0xBSqW7hrqddhfLf3e2XwHrpY";
@@ -17,7 +18,6 @@ const ALL_RECIPIENTS = [
   "6654067367"
 ];
 
-// Helper: Normalisasi Order ID
 function cleanOrderId(id) {
   if (!id) return '';
   return id
@@ -26,7 +26,6 @@ function cleanOrderId(id) {
     .replace(/[\u2013\u2014_]/g, '-');
 }
 
-// Helper: Kirim Pesan Telegram Teks
 async function sendTelegramMsg(chatId, text, replyMarkup = undefined, replyId = undefined) {
   return fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
     method: 'POST',
@@ -39,6 +38,19 @@ async function sendTelegramMsg(chatId, text, replyMarkup = undefined, replyId = 
       reply_to_message_id: replyId
     })
   });
+}
+
+// Helper: Gabungkan Nama + Kuota/Durasi secara dinamis
+function formatFullPackageName(item) {
+  if (!item || typeof item !== 'object') return 'eSIM Package';
+  
+  const baseName = item.name || item.title || item.country || item.package_name || item.nama || 'eSIM';
+  const detail = item.quota || item.desc || item.description || item.detail || item.duration || item.validity || item.note || '';
+  
+  if (detail && !baseName.toLowerCase().includes(detail.toLowerCase())) {
+    return `${baseName} - ${detail}`;
+  }
+  return baseName;
 }
 
 export default async function handler(req, res) {
@@ -58,12 +70,10 @@ export default async function handler(req, res) {
     // ========================================================
     if (isGroup && isRegisteredAdmin) {
 
-      // 1.1 COMMAND TEKS ADMIN (/start, /pantau, /cek, /selesai)
       if (update.message && update.message.text) {
         const rawText = update.message.text.trim();
         const text = rawText.replace(/@goesimidbot/gi, '').trim();
 
-        // /start di grup
         if (text.startsWith('/start')) {
           const startMessage = `👋 *Halo! Selamat Datang di Bot eSIMGo Admin*
 
@@ -81,7 +91,6 @@ _Bot siap beroperasi di grup._`;
           return res.status(200).json({ ok: true });
         }
 
-        // /cek
         if (text.startsWith('/cek')) {
           const parts = text.split(/\s+/);
           let targetOrderId = parts[1] ? cleanOrderId(parts[1]) : null;
@@ -125,7 +134,6 @@ _Bot siap beroperasi di grup._`;
           return res.status(200).json({ ok: true });
         }
 
-        // /selesai
         if (text.startsWith('/selesai')) {
           const parts = text.split(/\s+/);
           let targetOrderId = parts[1] ? cleanOrderId(parts[1]) : null;
@@ -161,7 +169,6 @@ _Bot siap beroperasi di grup._`;
           return res.status(200).json({ ok: true });
         }
 
-        // /pantau atau /rekap
         if (text.startsWith('/pantau') || text.startsWith('/rekap')) {
           const resAll = await fetch(`${FIREBASE_DB_URL}/orders.json`);
           const allOrders = (await resAll.json()) || {};
@@ -202,7 +209,7 @@ _Ketik \`/cek ORD-ID\` untuk melihat rincian per order._`;
         }
       }
 
-      // 1.2 KLIK VERIFIKASI LUNAS
+      // Verifikasi Lunas
       if (update.callback_query && update.callback_query.data.startsWith('VERIFY_')) {
         let orderId = update.callback_query.data.replace('VERIFY_', '');
         const adminName = ADMIN_NAMES[senderIdStr] || update.callback_query.from.first_name || 'Admin';
@@ -243,7 +250,7 @@ Silakan *REPLY (Balas)* pesan ini dengan melampirkan file **PDF** atau foto **QR
         return res.status(200).json({ ok: true });
       }
 
-      // 1.3 ADMIN REPLY FILE QR/PDF
+      // Admin Reply File QR/PDF
       if (update.message && (update.message.document || update.message.photo) && update.message.reply_to_message) {
         const replyText = update.message.reply_to_message.text || update.message.reply_to_message.caption || "";
         const match = replyText.match(/[O0]RD[-\u2013\u2014]\d+/i);
@@ -362,7 +369,6 @@ ${adminNote ? `\n📝 *Catatan Admin:*\n${adminNote}\n` : ''}
             });
           }
 
-          // Update Firebase ke COMPLETED
           await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, {
             method: 'PATCH',
             body: JSON.stringify({ status: 'COMPLETED', admin_note: adminNote || null })
@@ -405,7 +411,7 @@ _QR Code / PDF telah sukses terkirim ke email & Telegram pembeli._`;
       const buyerChatId = update.message?.chat?.id || update.callback_query?.message?.chat?.id;
       const text = update.message?.text || "";
 
-      // 2.1 PEMBELI KLIK /start
+      // 2.1 /start
       if (text.startsWith('/start')) {
         const welcomeKeyboard = {
           inline_keyboard: [
@@ -420,7 +426,7 @@ Silakan pilih menu di bawah untuk memulai:`, welcomeKeyboard);
         return res.status(200).json({ ok: true });
       }
 
-      // 2.2 COMMAND KHUSUS PEMBELI: /status
+      // 2.2 /status
       if (text.startsWith('/status') || (update.callback_query && update.callback_query.data === "BUY_STATUS")) {
         const resOrders = await (await fetch(`${FIREBASE_DB_URL}/orders.json`)).json() || {};
         const myOrders = Object.entries(resOrders).filter(([_, o]) => o && String(o.buyer_chat_id) === String(buyerChatId));
@@ -445,7 +451,7 @@ Silakan pilih menu di bawah untuk memulai:`, welcomeKeyboard);
         return res.status(200).json({ ok: true });
       }
 
-      // 2.3 COMMAND KHUSUS PEMBELI: /bantuan
+      // 2.3 /bantuan
       if (text.startsWith('/bantuan')) {
         await sendTelegramMsg(buyerChatId, `💬 *PUSAT BANTUAN & CS ESIMGO*
 ━━━━━━━━━━━━━━━━━━
@@ -457,7 +463,7 @@ _Sertakan Order ID Anda jika ingin menanyakan status pesanan._`);
         return res.status(200).json({ ok: true });
       }
 
-      // 2.4 PEMBELI PILIH PAKET (Auto-Detect Format Firebase /products)
+      // 2.4 PEMBELI PILIH PAKET (LENGKAP DENGAN KUOTA & DURASI)
       if (update.callback_query && update.callback_query.data === "BUY_MENU") {
         const resDb = await fetch(`${FIREBASE_DB_URL}/products.json`);
         const dbProducts = (await resDb.json()) || {};
@@ -466,13 +472,13 @@ _Sertakan Order ID Anda jika ingin menanyakan status pesanan._`);
 
         const extractProduct = (key, item) => {
           if (!item || typeof item !== 'object') return;
-          const name = item.name || item.title || item.package_name || item.nama || item.packageName;
+          const fullName = formatFullPackageName(item);
           const price = item.price || item.nominal || item.harga || item.amount || 0;
           const isInactive = item.active === false || item.is_active === false || item.status === 'inactive';
 
-          if (name && !isInactive) {
+          if (fullName && !isInactive) {
             pkgButtons.push([
-              { text: `${name} - Rp ${Number(price).toLocaleString('id-ID')}`, callback_data: `SELECT_${key}` }
+              { text: `${fullName} - Rp ${Number(price).toLocaleString('id-ID')}`, callback_data: `SELECT_${key}` }
             ]);
           }
         };
@@ -481,7 +487,7 @@ _Sertakan Order ID Anda jika ingin menanyakan status pesanan._`);
           dbProducts.forEach((item, index) => extractProduct(String(index), item));
         } else {
           Object.entries(dbProducts).forEach(([key, item]) => {
-            if (item && typeof item === 'object' && !item.name && !item.title && !item.price) {
+            if (item && typeof item === 'object' && !item.name && !item.title && !item.price && !item.country) {
               Object.entries(item).forEach(([subKey, subItem]) => {
                 extractProduct(`${key}_${subKey}`, subItem);
               });
@@ -500,7 +506,7 @@ _Sertakan Order ID Anda jika ingin menanyakan status pesanan._`);
         return res.status(200).json({ ok: true });
       }
 
-      // Handler saat tombol paket diklik
+      // Saat tombol paket ditekan
       if (update.callback_query && update.callback_query.data.startsWith('SELECT_')) {
         const pkgKey = update.callback_query.data.replace('SELECT_', '');
         
@@ -520,14 +526,14 @@ _Sertakan Order ID Anda jika ingin menanyakan status pesanan._`);
           return res.status(200).json({ ok: true });
         }
 
-        const pkgName = selected.name || selected.title || selected.package_name || selected.nama;
+        const pkgFullName = formatFullPackageName(selected);
         const pkgPrice = selected.price || selected.nominal || selected.harga || 0;
         const newOrderId = `ORD-${Math.floor(100000 + Math.random() * 900000)}`;
 
         await fetch(`${FIREBASE_DB_URL}/orders/${newOrderId}.json`, {
           method: 'PUT',
           body: JSON.stringify({
-            package_name: pkgName,
+            package_name: pkgFullName,
             price: pkgPrice,
             buyer_chat_id: buyerChatId,
             status: 'DRAFT_EMAIL',
@@ -535,11 +541,11 @@ _Sertakan Order ID Anda jika ingin menanyakan status pesanan._`);
           })
         });
 
-        await sendTelegramMsg(buyerChatId, `👌 Anda memilih paket: *${pkgName}*\n\nKetik dan kirimkan *ALAMAT EMAIL* Anda sekarang untuk pengiriman cadangan profil eSIM:`);
+        await sendTelegramMsg(buyerChatId, `👌 Anda memilih paket: *${pkgFullName}*\n\nKetik dan kirimkan *ALAMAT EMAIL* Anda sekarang untuk pengiriman cadangan profil eSIM:`);
         return res.status(200).json({ ok: true });
       }
 
-      // 2.5 PEMBELI INPUT EMAIL
+      // 2.5 INPUT EMAIL
       if (text.includes('@') && text.includes('.')) {
         const resOrders = await (await fetch(`${FIREBASE_DB_URL}/orders.json`)).json() || {};
         const draftOrder = Object.entries(resOrders).reverse().find(([_, o]) => o.buyer_chat_id === buyerChatId && o.status === 'DRAFT_EMAIL');
@@ -553,7 +559,6 @@ _Sertakan Order ID Anda jika ingin menanyakan status pesanan._`);
             body: JSON.stringify({ email: userEmail, status: 'PENDING' })
           });
 
-          // Ambil pengaturan Rekening/QRIS dari node store_settings
           const resSettings = (await (await fetch(`${FIREBASE_DB_URL}/store_settings.json`)).json()) || {};
           const paymentText = resSettings.payment_info || "• Pembayaran via QRIS (Semua E-Wallet & Mobile Banking)\n• Silakan scan barcode di atas";
           const qrisImageUrl = resSettings.qris_image_url || "https://goesim.vercel.app/qris.jpg";
@@ -589,7 +594,7 @@ Silakan transfer lalu *KIRIMKAN FOTO BUKTI PEMBAYARAN* ke chat ini.`;
         }
       }
 
-      // 2.6 PEMBELI UPLOAD BUKTI TRANSFER
+      // 2.6 UPLOAD BUKTI TRANSFER
       if (update.message?.photo) {
         const resOrders = await (await fetch(`${FIREBASE_DB_URL}/orders.json`)).json() || {};
         const pendingOrder = Object.entries(resOrders).reverse().find(([_, o]) => o.buyer_chat_id === buyerChatId && o.status === 'PENDING');
@@ -602,7 +607,6 @@ Silakan transfer lalu *KIRIMKAN FOTO BUKTI PEMBAYARAN* ke chat ini.`;
         const [orderId, orderInfo] = pendingOrder;
         const photoId = update.message.photo[update.message.photo.length - 1].file_id;
 
-        // Forward bukti bayar ke Grup Admin
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
