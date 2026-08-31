@@ -58,7 +58,7 @@
         </div>
         <div>
           <h1 class="text-2xl font-black text-slate-900 leading-tight">Dashboard Pengelola eSIM</h1>
-          <p class="text-xs text-slate-500">Terhubung langsung dengan Bot Notifikasi Telegram.</p>
+          <p class="text-xs text-slate-500">Terhubung langsung dengan Bot Notifikasi Telegram & Realtime Database.</p>
         </div>
       </div>
 
@@ -272,7 +272,6 @@
 
     const FIREBASE_DB_URL = "https://esim-store-d7580-default-rtdb.europe-west1.firebasedatabase.app";
 
-    let currentOrders = [];
     let currentProducts = {};
     let isStoreOpen = true;
     let activeSendEmailOrder = null;
@@ -412,13 +411,13 @@
           
           tbody.innerHTML += `
             <tr class="hover:bg-slate-50 transition">
-              <td class="p-3 text-2xl">${p.flag}</td>
-              <td class="p-3 font-bold text-slate-800">${p.name}</td>
-              <td class="p-3 text-slate-500">${p.network}</td>
-              <td class="p-3 font-semibold">${p.quota}</td>
-              <td class="p-3 text-slate-600">${p.duration}</td>
+              <td class="p-3 text-2xl">${p.flag || '🌏'}</td>
+              <td class="p-3 font-bold text-slate-800">${p.name || '-'}</td>
+              <td class="p-3 text-slate-500">${p.network || '-'}</td>
+              <td class="p-3 font-semibold">${p.quota || '-'}</td>
+              <td class="p-3 text-slate-600">${p.duration || '-'}</td>
               <td class="p-3 text-slate-400 line-through text-xs">${originalPrice}</td>
-              <td class="p-3 font-bold text-emerald-600">Rp ${Number(p.price).toLocaleString('id-ID')}</td>
+              <td class="p-3 font-bold text-emerald-600">Rp ${Number(p.price || 0).toLocaleString('id-ID')}</td>
               <td class="p-3 text-center space-x-2">
                 <button onclick="editProduct('${key}')" class="text-indigo-600 hover:text-indigo-800 text-xs font-bold">Edit</button>
                 <button onclick="deleteProduct('${key}')" class="text-rose-600 hover:text-rose-800 text-xs font-bold">Hapus</button>
@@ -454,13 +453,13 @@
       const p = currentProducts[key];
       document.getElementById('modal-product-title').innerText = "Edit Paket eSIM";
       document.getElementById('prod-id').value = key;
-      document.getElementById('prod-flag').value = p.flag;
-      document.getElementById('prod-name').value = p.name;
-      document.getElementById('prod-network').value = p.network;
-      document.getElementById('prod-quota').value = p.quota;
-      document.getElementById('prod-duration').value = p.duration;
+      document.getElementById('prod-flag').value = p.flag || '';
+      document.getElementById('prod-name').value = p.name || '';
+      document.getElementById('prod-network').value = p.network || '';
+      document.getElementById('prod-quota').value = p.quota || '';
+      document.getElementById('prod-duration').value = p.duration || '';
       document.getElementById('prod-original-price').value = p.original_price || '';
-      document.getElementById('prod-price').value = p.price;
+      document.getElementById('prod-price').value = p.price || '';
       document.getElementById('prod-badge').value = p.badge || '';
       document.getElementById('product-modal').classList.remove('hidden');
       document.getElementById('product-modal').classList.add('flex');
@@ -500,55 +499,82 @@
       }
     }
 
-    // ==================== PESANAN MASUK ====================
+    // ==================== PESANAN MASUK (SINKRON & CEPAT) ====================
     async function loadOrders() {
+      const tbody = document.getElementById('orders-table-body');
       try {
         const res = await fetch(`${FIREBASE_DB_URL}/orders.json`);
         const data = await res.json();
-        const tbody = document.getElementById('orders-table-body');
         tbody.innerHTML = '';
 
-        if (!data) {
+        if (!data || Object.keys(data).length === 0) {
           tbody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-xs text-slate-400">Belum ada pesanan masuk.</td></tr>`;
           return;
         }
 
-        currentOrders = Object.values(data).reverse();
+        // Pertahankan Key Firebase sebagai Order ID
+        const orderEntries = Object.entries(data).reverse();
 
-        currentOrders.forEach((o, index) => {
-          const isPaid = o.status === 'PAID';
-          const hasProof = !!o.proof_image;
+        orderEntries.forEach(([key, o]) => {
+          if (!o) return;
+          const orderId = o.order_id || key;
+          const isPaid = o.status === 'PAID' || o.status === 'COMPLETED';
+          const isCompleted = o.status === 'COMPLETED';
+
+          // Format Waktu WIB
+          let displayTime = o.waktu || '-';
+          if (!o.waktu && o.created_at) {
+            try {
+              const d = new Date(o.created_at);
+              displayTime = new Intl.DateTimeFormat('id-ID', {
+                timeZone: 'Asia/Jakarta',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+              }).format(d) + ' WIB';
+            } catch (e) {
+              displayTime = o.created_at;
+            }
+          }
+
+          // Link Bukti Bayar
+          const proofUrl = o.payment_proof_url || o.proof_image || o.proof_url;
+
+          // Status Badge Styling
+          let statusColor = 'bg-amber-100 text-amber-700';
+          if (o.status === 'COMPLETED') statusColor = 'bg-emerald-100 text-emerald-700';
+          else if (o.status === 'PAID') statusColor = 'bg-blue-100 text-blue-700';
 
           tbody.innerHTML += `
             <tr class="hover:bg-slate-50 transition">
-              <td class="p-4 text-xs text-slate-400 whitespace-nowrap">${o.created_at}</td>
-              <td class="p-4 font-mono text-xs font-bold text-slate-800 whitespace-nowrap">${o.order_id}</td>
-              <td class="p-4 text-xs whitespace-nowrap">${o.package_name}</td>
-              <td class="p-4 font-bold text-indigo-600 whitespace-nowrap">Rp ${Number(o.price).toLocaleString('id-ID')}</td>
-              <td class="p-4 text-xs font-semibold text-slate-700 whitespace-nowrap">${o.email}</td>
+              <td class="p-4 text-xs text-slate-400 whitespace-nowrap">${displayTime}</td>
+              <td class="p-4 font-mono text-xs font-bold text-slate-800 whitespace-nowrap">${orderId}</td>
+              <td class="p-4 text-xs whitespace-nowrap">${o.package_name || '-'}</td>
+              <td class="p-4 font-bold text-indigo-600 whitespace-nowrap">Rp ${Number(o.price || 0).toLocaleString('id-ID')}</td>
+              <td class="p-4 text-xs font-semibold text-slate-700 whitespace-nowrap">${o.email || '-'}</td>
               <td class="p-4 text-center whitespace-nowrap">
-                ${hasProof 
-                  ? `<button onclick="viewImage(${index})" class="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 text-xs font-bold px-3 py-1.5 rounded-lg transition inline-flex items-center gap-1">
+                ${proofUrl 
+                  ? `<button onclick="viewImage('${proofUrl}')" class="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 text-xs font-bold px-3 py-1.5 rounded-lg transition inline-flex items-center gap-1">
                       <i data-lucide="image" class="w-3.5 h-3.5"></i> Lihat Bukti
                      </button>` 
                   : `<span class="text-[11px] text-slate-400 italic">Belum kirim</span>`
                 }
               </td>
               <td class="p-4 text-center whitespace-nowrap">
-                <span class="px-2.5 py-1 text-[11px] rounded-full font-bold ${isPaid ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">
-                  ${o.status}
+                <span class="px-2.5 py-1 text-[11px] rounded-full font-bold ${statusColor}">
+                  ${o.status || 'PENDING'}
                 </span>
               </td>
               <td class="p-4 text-center whitespace-nowrap space-x-2">
                 ${!isPaid 
-                  ? `<button onclick="verifyOrder('${o.order_id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-1.5 rounded-lg transition shadow-sm">
+                  ? `<button onclick="verifyOrder('${orderId}')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-1.5 rounded-lg transition shadow-sm">
                       Verifikasi Lunas
                      </button>` 
-                  : `<button onclick="openSendEmailModal('${o.email}', '${o.order_id}', '${o.package_name}')" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition inline-flex items-center gap-1 shadow-sm">
+                  : `<button onclick="openSendEmailModal('${o.email}', '${orderId}', '${o.package_name}')" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition inline-flex items-center gap-1 shadow-sm">
                       <i data-lucide="qr-code" class="w-3.5 h-3.5"></i> Kirim QR / PDF
                      </button>`
                 }
-                <button onclick="deleteOrder('${o.order_id}')" class="text-rose-500 hover:text-rose-700 text-xs font-bold px-2 py-1">
+                <button onclick="deleteOrder('${orderId}')" class="text-rose-500 hover:text-rose-700 text-xs font-bold px-2 py-1">
                   Hapus
                 </button>
               </td>
@@ -556,13 +582,15 @@
           `;
         });
         lucide.createIcons();
-      } catch (err) {}
+      } catch (err) {
+        console.error("Gagal load orders:", err);
+      }
     }
 
     async function verifyOrder(orderId) {
-      await fetch(`${FIREBASE_DB_URL}/orders/${orderId}/status.json`, {
-        method: 'PUT',
-        body: JSON.stringify('PAID')
+      await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'PAID' })
       });
       showToast(`Pesanan ${orderId} telah diverifikasi!`, 'success');
       loadOrders();
@@ -579,8 +607,8 @@
     // MODAL KIRIM EMAIL
     function openSendEmailModal(email, orderId, packageName) {
       activeSendEmailOrder = { email, orderId, packageName };
-      document.getElementById('email-modal-target').value = email;
-      document.getElementById('email-modal-package').value = packageName;
+      document.getElementById('email-modal-target').value = email || '-';
+      document.getElementById('email-modal-package').value = packageName || '-';
       document.getElementById('email-modal-notes').value = '';
       document.getElementById('esim-file-name').innerText = "Pilih Gambar QR atau PDF";
       document.getElementById('esim-file-input').value = "";
@@ -644,6 +672,7 @@
         if (res.ok && data.success) {
           showToast(`QR/PDF eSIM berhasil dikirim ke ${activeSendEmailOrder.email}!`, 'success');
           closeSendEmailModal();
+          loadOrders();
         } else {
           showToast(data.error || 'Gagal mengirim email', 'error');
         }
@@ -656,8 +685,9 @@
       }
     }
 
-    function viewImage(index) {
-      document.getElementById('modal-proof-img').src = currentOrders[index].proof_image;
+    // PREVIEW BUKTI BAYAR LANGSUNG DARI URL TELEGRAM / FIREBASE
+    function viewImage(url) {
+      document.getElementById('modal-proof-img').src = url;
       document.getElementById('image-modal').classList.remove('hidden');
       document.getElementById('image-modal').classList.add('flex');
       lucide.createIcons();
@@ -669,11 +699,6 @@
     }
 
     checkAuth();
-    setInterval(() => {
-      if (sessionStorage.getItem('admin_logged_in') === 'true') {
-        loadOrders();
-      }
-    }, 4000);
   </script>
 </body>
 </html>
