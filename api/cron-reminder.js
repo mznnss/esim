@@ -19,20 +19,27 @@ export default async function handler(req, res) {
     for (const [orderId, order] of Object.entries(resOrders)) {
       if (!order) continue;
 
-      const createdTime = new Date(order.created_at || order.pending_since).getTime();
+      const createdTime = new Date(order.pending_since || order.created_at).getTime();
       const diffMinutes = Math.floor((now - createdTime) / (1000 * 60));
 
-      // 1. AUTO-DELETE DRAFT_EMAIL JIKA >= 5 MENIT (Tidak input email)
+      // 1. AUTO-DELETE DRAFT_EMAIL (>= 5 Menit tanpa input email)
       if (order.status === 'DRAFT_EMAIL' && diffMinutes >= 5) {
         await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, { method: 'DELETE' });
         continue;
       }
 
-      // Proses hanya status PENDING untuk pengingat & auto-delete 1 jam
+      // Hanya proses status PENDING
       if (order.status !== 'PENDING') continue;
 
-      // 2. INGATKAN PEMBELI SETELAH 5 MENIT (Status PENDING)
+      // 2. INGATKAN PEMBELI (Hanya 1x di menit ke-5 ke atas)
       if (diffMinutes >= 5 && diffMinutes < 60 && !order.reminder_sent) {
+        // Kunci status dulu ke database agar tidak terkirim ganda
+        await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, {
+          method: 'PATCH',
+          body: JSON.stringify({ reminder_sent: true })
+        });
+
+        // Kirim Telegram ke Pembeli
         if (order.buyer_chat_id) {
           await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
             method: 'POST',
@@ -52,6 +59,7 @@ Silakan segera selesaikan transfer via QRIS dan kirimkan bukti bayar agar pesana
           });
         }
 
+        // Kirim Email ke Pembeli
         if (order.email) {
           await transporter.sendMail({
             from: `"eSIMGo Billing" <${GMAIL_USER}>`,
@@ -66,14 +74,9 @@ Silakan segera selesaikan transfer via QRIS dan kirimkan bukti bayar agar pesana
             `
           });
         }
-
-        await fetch(`${FIREBASE_DB_URL}/orders/${orderId}/reminder_sent.json`, {
-          method: 'PUT',
-          body: JSON.stringify(true)
-        });
       }
 
-      // 3. AUTO-DELETE PENDING JIKA >= 60 MENIT (1 Jam)
+      // 3. AUTO-DELETE PENDING (>= 60 Menit)
       if (diffMinutes >= 60) {
         await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, { method: 'DELETE' });
 
