@@ -63,7 +63,42 @@ function formatFullPackageName(item) {
   return label;
 }
 
-// Kirim Invoice Pembayaran + QRIS Langsung ke Email Pembeli
+// Helper Ekstraksi Semua Produk secara Universal & Rata (Flat)
+function getAllProductsFlat(dbProducts) {
+  const list = [];
+  if (!dbProducts) return list;
+
+  const extract = (key, item) => {
+    if (!item || typeof item !== 'object') return;
+    const isInactive = item.active === false || item.is_active === false || item.status === 'inactive';
+    if (isInactive) return;
+
+    // Jika ini adalah object produk langsung
+    if (item.name || item.title || item.price || item.harga || item.quota) {
+      list.push({
+        key: String(key),
+        data: item,
+        fullName: formatFullPackageName(item),
+        price: Number(item.price || item.nominal || item.harga || item.amount || 0),
+        duration: item.duration || item.validity || ''
+      });
+    } else {
+      // Jika ini adalah parent category
+      Object.entries(item).forEach(([subKey, subItem]) => {
+        extract(`${key}_${subKey}`, subItem);
+      });
+    }
+  };
+
+  if (Array.isArray(dbProducts)) {
+    dbProducts.forEach((item, idx) => extract(String(idx), item));
+  } else {
+    Object.entries(dbProducts).forEach(([key, item]) => extract(key, item));
+  }
+
+  return list;
+}
+
 async function sendInvoiceEmail(email, orderId, packageName, price, paymentText, qrisUrl) {
   if (!email) return;
 
@@ -125,7 +160,6 @@ async function sendInvoiceEmail(email, orderId, packageName, price, paymentText,
   });
 }
 
-// Kirim Pesan Pengingat Pembayaran
 async function sendReminderNotification(orderId, orderData) {
   const reminderMsg = `⚠️ *PENGINGAT PEMBAYARAN ESIM*
 ━━━━━━━━━━━━━━━━━━
@@ -328,7 +362,6 @@ _Ketik \`/cek ORD-ID\` untuk melihat rincian per order._`;
       if (update.callback_query) {
         const data = update.callback_query.data;
 
-        // Tombol Ingatkan Bayar
         if (data.startsWith('REMIND_')) {
           const orderId = data.replace('REMIND_', '');
           const orderRes = await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`);
@@ -343,7 +376,6 @@ _Ketik \`/cek ORD-ID\` untuk melihat rincian per order._`;
           return res.status(200).json({ ok: true });
         }
 
-        // Tombol Verifikasi Lunas
         if (data.startsWith('VERIFY_')) {
           let orderId = data.replace('VERIFY_', '');
           const adminName = ADMIN_NAMES[senderIdStr] || update.callback_query.from.first_name || 'Admin';
@@ -423,7 +455,6 @@ Silakan *REPLY (Balas)* pesan ini dengan melampirkan file **PDF** atau foto **QR
           const downloadUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${filePath}`;
           const fileBuffer = Buffer.from(await (await fetch(downloadUrl)).arrayBuffer());
 
-          // Kirim ke Telegram Pembeli
           if (orderData.buyer_chat_id) {
             const buyerCaption = `🎉 *PROFIL ESIM ANDA SIAP!*
 ━━━━━━━━━━━━━━━━━━
@@ -451,7 +482,6 @@ ${adminNote ? `\n📝 *Catatan Admin:*\n${adminNote}\n` : ''}
             }
           }
 
-          // Kirim Email Dark Mode
           if (orderData.email) {
             const noteHtmlBlock = adminNote ? `
               <div style="background-color: #1e293b; border-left: 3px solid #38bdf8; border-radius: 6px; padding: 12px 14px; margin-bottom: 20px;">
@@ -553,35 +583,14 @@ _QR Code / PDF telah sukses terkirim ke email & Telegram pembeli._`;
       if (text.startsWith('/start')) {
         const resDb = await fetch(`${FIREBASE_DB_URL}/products.json`);
         const dbProducts = (await resDb.json()) || {};
+        const productList = getAllProductsFlat(dbProducts);
 
         let pricelistText = "";
-        const extractPricelist = (item) => {
-          if (!item || typeof item !== 'object') return;
-          const isInactive = item.active === false || item.is_active === false || item.status === 'inactive';
-          if (isInactive) return;
-
-          const fullName = formatFullPackageName(item);
-          const price = item.price || item.nominal || item.harga || 0;
-          const duration = item.duration || item.validity || '';
-
-          pricelistText += `🔹 *${fullName}*\n`;
-          if (duration) {
-            pricelistText += `   ⏱ _Masa Aktif:_ ${duration}\n`;
-          }
-          pricelistText += `   💰 *Harga:* Rp ${Number(price).toLocaleString('id-ID')}\n\n`;
-        };
-
-        if (Array.isArray(dbProducts)) {
-          dbProducts.forEach(item => extractPricelist(item));
-        } else {
-          Object.values(dbProducts).forEach(item => {
-            if (item && typeof item === 'object' && !item.name && !item.title && !item.price && !item.country) {
-              Object.values(item).forEach(subItem => extractPricelist(subItem));
-            } else {
-              extractPricelist(item);
-            }
-          });
-        }
+        productList.forEach(item => {
+          pricelistText += `🔹 *${item.fullName}*\n`;
+          if (item.duration) pricelistText += `   ⏱ _Masa Aktif:_ ${item.duration}\n`;
+          pricelistText += `   💰 *Harga:* Rp ${item.price.toLocaleString('id-ID')}\n\n`;
+        });
 
         const greetingMessage = `👋 *Halo! Selamat Datang di eSIMGo Store* 🌏
 Internetan hemat & roaming cepat di luar negeri tanpa perlu repot ganti kartu fisik!
@@ -636,7 +645,7 @@ Silakan klik tombol di bawah untuk memesan:`;
         return res.status(200).json({ ok: true });
       }
 
-      // 2.3 /bantuan (Customer Support @rifkyyw)
+      // 2.3 /bantuan
       if (text.startsWith('/bantuan') || (update.callback_query && update.callback_query.data === "BUY_HELP")) {
         await sendTelegramMsg(buyerChatId, `💬 *PUSAT BANTUAN & CS ESIMGO*
 ━━━━━━━━━━━━━━━━━━
@@ -648,77 +657,48 @@ _Sertakan Order ID Anda jika ingin menanyakan status pesanan._`);
         return res.status(200).json({ ok: true });
       }
 
-      // 2.4 Menu Pilih Paket
+      // 2.4 Menu Pilih Paket (Menggunakan Index Singkat agar Bebas Limit 64 Byte)
       if (update.callback_query && update.callback_query.data === "BUY_MENU") {
         const resDb = await fetch(`${FIREBASE_DB_URL}/products.json`);
         const dbProducts = (await resDb.json()) || {};
+        const productList = getAllProductsFlat(dbProducts);
 
-        const pkgButtons = [];
-
-        const extractProduct = (key, item) => {
-          if (!item || typeof item !== 'object') return;
-          const fullName = formatFullPackageName(item);
-          const price = item.price || item.nominal || item.harga || item.amount || 0;
-          const isInactive = item.active === false || item.is_active === false || item.status === 'inactive';
-
-          if (fullName && !isInactive) {
-            pkgButtons.push([
-              { text: `${fullName} - Rp ${Number(price).toLocaleString('id-ID')}`, callback_data: `SELECT_${key}` }
-            ]);
-          }
-        };
-
-        if (Array.isArray(dbProducts)) {
-          dbProducts.forEach((item, index) => extractProduct(String(index), item));
-        } else {
-          Object.entries(dbProducts).forEach(([key, item]) => {
-            if (item && typeof item === 'object' && !item.name && !item.title && !item.price && !item.country) {
-              Object.entries(item).forEach(([subKey, subItem]) => {
-                extractProduct(`${key}_${subKey}`, subItem);
-              });
-            } else {
-              extractProduct(key, item);
-            }
-          });
-        }
-
-        if (pkgButtons.length === 0) {
+        if (productList.length === 0) {
           await sendTelegramMsg(buyerChatId, `⚠️ Maaf, belum ada paket eSIM yang tersedia di database saat ini.`);
           return res.status(200).json({ ok: true });
         }
+
+        const pkgButtons = productList.map((item, index) => [
+          { text: `${item.fullName} - Rp ${item.price.toLocaleString('id-ID')}`, callback_data: `P_${index}` }
+        ]);
 
         await sendTelegramMsg(buyerChatId, `🌏 *Pilih Paket eSIM yang Ingin Anda Beli:*`, { inline_keyboard: pkgButtons });
         return res.status(200).json({ ok: true });
       }
 
-      // 2.5 Memilih Paket (Universal Lookup - Mencegah "Paket tidak ditemukan")
-      if (update.callback_query && update.callback_query.data.startsWith('SELECT_')) {
-        const pkgKey = update.callback_query.data.replace('SELECT_', '');
-        
+      // 2.5 Eksekusi Pilih Paket
+      if (update.callback_query && (update.callback_query.data.startsWith('P_') || update.callback_query.data.startsWith('SELECT_'))) {
         const resDb = await fetch(`${FIREBASE_DB_URL}/products.json`);
         const dbProducts = (await resDb.json()) || {};
+        const productList = getAllProductsFlat(dbProducts);
 
-        // 1. Cari direct key (misal: p_1772459...)
-        let selected = dbProducts[pkgKey];
+        let selected = null;
 
-        // 2. Cari nested key jika ada separator
-        if (!selected && pkgKey.includes('_')) {
-          const [cat, sub] = pkgKey.split('_');
-          selected = dbProducts[cat]?.[sub];
-        }
-
-        // 3. Fallback jika struktur array
-        if (!selected && Array.isArray(dbProducts)) {
-          selected = dbProducts[Number(pkgKey)];
+        if (update.callback_query.data.startsWith('P_')) {
+          const idx = parseInt(update.callback_query.data.replace('P_', ''), 10);
+          selected = productList[idx]?.data;
+        } else {
+          const rawKey = update.callback_query.data.replace('SELECT_', '');
+          selected = productList.find(p => p.key === rawKey || p.key.endsWith(rawKey))?.data;
         }
 
         if (!selected) {
-          await sendTelegramMsg(buyerChatId, `⚠️ Paket tidak ditemukan.`);
+          await sendTelegramMsg(buyerChatId, `⚠️ Paket tidak ditemukan. Silakan ketik /start untuk memuat ulang daftar paket.`);
           return res.status(200).json({ ok: true });
         }
 
         const pkgFullName = formatFullPackageName(selected);
-        const pkgPrice = selected.price || selected.nominal || selected.harga || 0;
+        const pkgPrice = Number(selected.price || selected.nominal || selected.harga || 0);
         const newOrderId = `ORD-${Math.floor(100000 + Math.random() * 900000)}`;
 
         await fetch(`${FIREBASE_DB_URL}/orders/${newOrderId}.json`, {
@@ -738,7 +718,7 @@ _Sertakan Order ID Anda jika ingin menanyakan status pesanan._`);
         return res.status(200).json({ ok: true });
       }
 
-      // 2.6 Input Email (Kirim Invoice Telegram + Email)
+      // 2.6 Input Email
       if (text.includes('@') && text.includes('.')) {
         const resOrders = await (await fetch(`${FIREBASE_DB_URL}/orders.json`)).json() || {};
         const draftOrder = Object.entries(resOrders).reverse().find(([_, o]) => o.buyer_chat_id === buyerChatId && o.status === 'DRAFT_EMAIL');
@@ -789,10 +769,8 @@ Silakan transfer lalu *KIRIMKAN FOTO BUKTI PEMBAYARAN* ke chat ini.`;
             await sendTelegramMsg(buyerChatId, invoiceMessage);
           }
 
-          // Kirim tembusan ke email
           sendInvoiceEmail(userEmail, orderId, orderInfo.package_name, orderInfo.price, paymentText, qrisImageUrl).catch(e => console.error(e));
 
-          // Notifikasi ke Grup Admin dengan Tombol Ingatkan Bayar
           await sendTelegramMsg(
             GROUP_ADMIN_ID,
             `🔔 *PESANAN BARU MENUNGGU PEMBAYARAN!*
