@@ -137,7 +137,6 @@ async function sendInvoiceEmail(email, orderId, packageName, price, paymentText,
   });
 }
 
-// Fungsi Penolakan Bukti Transfer (Reject / Bukti Palsu)
 async function rejectOrderPayment(orderId, rejectReason, adminName, notifyChatId) {
   let orderRes = await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`);
   let orderData = await orderRes.json();
@@ -158,7 +157,6 @@ async function rejectOrderPayment(orderId, rejectReason, adminName, notifyChatId
   const diffMinutes = Math.floor((Date.now() - createdTime) / (1000 * 60));
   const remainingMinutes = Math.max(1, 60 - diffMinutes);
 
-  // Kembalikan status ke PENDING dan hapus bukti invalid
   await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, {
     method: 'PATCH',
     body: JSON.stringify({
@@ -237,7 +235,6 @@ export default async function handler(req, res) {
           return res.status(200).json({ ok: true });
         }
 
-        // Command Tolak Bukti Bayar Manual
         if (text.startsWith('/tolak')) {
           const parts = text.split(/\s+/);
           const targetOrderId = parts[1] ? cleanOrderId(parts[1]) : null;
@@ -285,7 +282,7 @@ export default async function handler(req, res) {
             'CANCELLED': '❌ DIBATALKAN / EXPIRED'
           }[order.status] || order.status;
 
-          const replyCek = `🔍 *DETAIL STATUS TRANSAKSI*\n━━━━━━━━━━━━━━━━━━\n🆔 *Order ID:* \`${targetOrderId}\`\n📦 *Paket:* ${order.package_name || '-'}\n💰 *Nominal:* Rp ${Number(order.price || 0).toLocaleString('id-ID')}\n📧 *Email:* ${order.email || '-'}\n📊 *Status:* *${statusBadge}*\n${order.proof_rejected_reason ? `⚠️ *Alasan Tolak Sebelumnya:* _${order.proof_rejected_reason}_\n` : ''}`;
+          const replyCek = `🔍 *DETAIL STATUS TRANSAKSI*\n━━━━━━━━━━━━━━━━━━\n🆔 *Order ID:* \`${targetOrderId}\`\n📦 *Paket:* ${order.package_name || '-'}\n💰 *Nominal:* Rp ${Number(order.price || 0).toLocaleString('id-ID')}\n📧 *Email:* ${order.email || '-'}\n📊 *Status:* *${statusBadge}*\n${order.proof_rejected_reason ? `⚠️ *Alasan Tolak:* _${order.proof_rejected_reason}_\n` : ''}`;
           await sendTelegramMsg(update.message.chat.id, replyCek);
           return res.status(200).json({ ok: true });
         }
@@ -332,20 +329,90 @@ export default async function handler(req, res) {
       // Callback Query Admin
       if (update.callback_query) {
         const data = update.callback_query.data;
+        const msgId = update.callback_query.message.message_id;
+        const adminChatId = update.callback_query.message.chat.id;
+        const adminName = ADMIN_NAMES[senderIdStr] || update.callback_query.from.first_name || 'Admin';
 
-        // Tombol Tolak Bukti Bayar
+        // 1. KLIK TOLAK -> TAMPILKAN MENU PILIHAN ALASAN
         if (data.startsWith('REJECT_')) {
           const orderId = data.replace('REJECT_', '');
-          const adminName = ADMIN_NAMES[senderIdStr] || update.callback_query.from.first_name || 'Admin';
 
-          await rejectOrderPayment(orderId, "Bukti transfer tidak valid / dana belum masuk ke mutasi rekening.", adminName, update.callback_query.message.chat.id);
+          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/editMessageReplyMarkup`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: adminChatId,
+              message_id: msgId,
+              reply_markup: {
+                inline_keyboard: [
+                  [{ text: "💳 Dana Belum Masuk / Mutasi Kosong", callback_data: `R1_${orderId}` }],
+                  [{ text: "📉 Nominal Transfer Kurang", callback_data: `R2_${orderId}` }],
+                  [{ text: "🔍 Foto Struk Buram / Tidak Jelas", callback_data: `R3_${orderId}` }],
+                  [{ text: "🚫 Bukti Palsu / Editan", callback_data: `R4_${orderId}` }],
+                  [{ text: "🔙 Batal Tolak", callback_data: `RCANCEL_${orderId}` }]
+                ]
+              }
+            })
+          });
           return res.status(200).json({ ok: true });
         }
 
-        // Tombol Verifikasi Lunas
+        // 2. BATAL TOLAK -> KEMBALIKAN KE TOMBOL AWAL
+        if (data.startsWith('RCANCEL_')) {
+          const orderId = data.replace('RCANCEL_', '');
+          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/editMessageReplyMarkup`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: adminChatId,
+              message_id: msgId,
+              reply_markup: {
+                inline_keyboard: [
+                  [
+                    { text: "✅ Verifikasi Lunas", callback_data: `VERIFY_${orderId}` },
+                    { text: "❌ Tolak / Bukti Palsu", callback_data: `REJECT_${orderId}` }
+                  ]
+                ]
+              }
+            })
+          });
+          return res.status(200).json({ ok: true });
+        }
+
+        // 3. EKSEKUSI ALASAN PENOLAKAN
+        if (data.startsWith('R1_') || data.startsWith('R2_') || data.startsWith('R3_') || data.startsWith('R4_')) {
+          const code = data.substring(0, 2);
+          const orderId = data.substring(3);
+
+          const reasonsMap = {
+            'R1': 'Bukti transfer tidak valid / dana belum masuk ke mutasi rekening.',
+            'R2': 'Nominal yang ditransfer kurang dari total tagihan invoice.',
+            'R3': 'Foto struk bukti transfer buram atau tidak terbaca dengan jelas.',
+            'R4': 'Bukti transfer terindikasi palsu / manipulasi digital.'
+          };
+
+          const selectedReason = reasonsMap[code] || "Bukti transfer tidak valid.";
+
+          // Kunci tombol agar tidak bisa diklik dobel
+          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/editMessageReplyMarkup`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: adminChatId,
+              message_id: msgId,
+              reply_markup: {
+                inline_keyboard: [[{ text: `🚫 Ditolak oleh ${adminName}`, callback_data: "DONE" }]]
+              }
+            })
+          });
+
+          await rejectOrderPayment(orderId, selectedReason, adminName, adminChatId);
+          return res.status(200).json({ ok: true });
+        }
+
+        // 4. VERIFIKASI LUNAS
         if (data.startsWith('VERIFY_')) {
           let orderId = data.replace('VERIFY_', '');
-          const adminName = ADMIN_NAMES[senderIdStr] || update.callback_query.from.first_name || 'Admin';
 
           await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, {
             method: 'PATCH',
@@ -360,8 +427,8 @@ export default async function handler(req, res) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              chat_id: update.callback_query.message.chat.id,
-              message_id: update.callback_query.message.message_id,
+              chat_id: adminChatId,
+              message_id: msgId,
               reply_markup: {
                 inline_keyboard: [[{ text: `✅ Terverifikasi Lunas oleh ${adminName}`, callback_data: "DONE" }]]
               }
@@ -369,10 +436,10 @@ export default async function handler(req, res) {
           });
 
           await sendTelegramMsg(
-            update.callback_query.message.chat.id,
+            adminChatId,
             `💡 *Order #${orderId} telah diverifikasi LUNAS oleh ${adminName}!*\n\nSilakan *REPLY (Balas)* pesan bukti transfer dengan file PDF atau foto QR Code eSIM untuk dikirim ke pembeli.`,
             undefined,
-            update.callback_query.message.message_id
+            msgId
           );
 
           const orderRes = await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`);
@@ -634,7 +701,7 @@ export default async function handler(req, res) {
         }
       }
 
-      // 2.7 Upload Bukti Bayar (Status Otomatis Jadi WAITING_VERIFICATION)
+      // 2.7 Upload Bukti Bayar
       if (update.message?.photo) {
         const resOrders = await (await fetch(`${FIREBASE_DB_URL}/orders.json`)).json() || {};
         const pendingOrder = Object.entries(resOrders).reverse().find(([_, o]) => o.buyer_chat_id === buyerChatId && (o.status === 'PENDING' || o.status === 'WAITING_VERIFICATION'));
@@ -656,7 +723,6 @@ export default async function handler(req, res) {
           }
         } catch (e) {}
 
-        // Ubah status jadi WAITING_VERIFICATION agar pengingat berhenti
         await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, {
           method: 'PATCH',
           body: JSON.stringify({
@@ -666,7 +732,6 @@ export default async function handler(req, res) {
           })
         });
 
-        // Kirim ke Grup Admin dengan 2 Tombol: Verifikasi atau Tolak Bukti
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
