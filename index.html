@@ -351,7 +351,7 @@
       }, 3500);
     }
 
-    // TELEGRAM NOTIFIER (SINKRON DENGAN API NOTIFY TERBARU)
+    // TELEGRAM NOTIFIER
     async function sendTelegramNotification(type, orderData) {
       try {
         await fetch('/api/notify', {
@@ -464,6 +464,7 @@
       orders.forEach(o => {
         const isPaid = o.status === 'PAID' || o.status === 'COMPLETED';
         const isWaiting = o.status === 'WAITING_VERIFICATION';
+        const isRejected = o.status === 'PENDING' && Boolean(o.proof_rejected_reason);
         
         let badgeClass = 'bg-amber-100 text-amber-700';
         let badgeText = 'PENDING';
@@ -474,6 +475,9 @@
         } else if (isWaiting) {
           badgeClass = 'bg-orange-100 text-orange-700 animate-pulse';
           badgeText = 'DIVERIFIKASI';
+        } else if (isRejected) {
+          badgeClass = 'bg-rose-100 text-rose-700';
+          badgeText = 'DITOLAK';
         }
 
         listContainer.innerHTML += `
@@ -500,12 +504,22 @@
       lucide.createIcons();
     }
 
-    function viewOrderDetail(orderId) {
-      const order = cachedOrders[orderId];
+    async function viewOrderDetail(orderId) {
+      let order = cachedOrders[orderId];
+      try {
+        const res = await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`);
+        const freshData = await res.json();
+        if (freshData) {
+          order = freshData;
+          cachedOrders[orderId] = freshData;
+        }
+      } catch (e) {}
+
       if (!order) return;
 
       const isPaid = order.status === 'PAID' || order.status === 'COMPLETED';
       const isWaiting = order.status === 'WAITING_VERIFICATION';
+      const isRejected = order.status === 'PENDING' && Boolean(order.proof_rejected_reason);
       const statusBadge = document.getElementById('detail-status-badge');
       
       if (isPaid) {
@@ -514,16 +528,19 @@
       } else if (isWaiting) {
         statusBadge.className = 'inline-block px-3 py-1 text-xs font-bold rounded-full bg-orange-100 text-orange-700 mb-2 animate-pulse';
         statusBadge.innerText = 'SEDANG DIVERIFIKASI ADMIN';
+      } else if (isRejected) {
+        statusBadge.className = 'inline-block px-3 py-1 text-xs font-bold rounded-full bg-rose-100 text-rose-700 mb-2 animate-bounce';
+        statusBadge.innerText = '⚠️ BUKTI PEMBAYARAN DITOLAK';
       } else {
         statusBadge.className = 'inline-block px-3 py-1 text-xs font-bold rounded-full bg-amber-100 text-amber-700 mb-2';
         statusBadge.innerText = 'MENUNGGU PEMBAYARAN';
       }
 
-      document.getElementById('detail-order-id').innerText = '#' + order.order_id;
-      document.getElementById('detail-package').innerText = order.package_name;
+      document.getElementById('detail-order-id').innerText = '#' + (order.order_id || orderId);
+      document.getElementById('detail-package').innerText = order.package_name || '-';
       document.getElementById('detail-time').innerText = order.waktu || order.created_at || '-';
-      document.getElementById('detail-email').innerText = order.email;
-      document.getElementById('detail-price').innerText = 'Rp ' + Number(order.price).toLocaleString('id-ID');
+      document.getElementById('detail-email').innerText = order.email || '-';
+      document.getElementById('detail-price').innerText = 'Rp ' + Number(order.price || 0).toLocaleString('id-ID');
 
       const proofSection = document.getElementById('detail-proof-section');
       const footerSection = document.getElementById('detail-action-footer');
@@ -545,14 +562,34 @@
             Tutup
           </button>
         `;
+      } else if (isRejected) {
+        proofSection.innerHTML = `
+          <div class="bg-rose-50 border border-rose-200 rounded-2xl p-4 text-left">
+            <div class="flex items-center gap-1.5 text-rose-700 font-bold text-xs mb-1">
+              <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-600"></i>
+              Bukti Pembayaran Ditolak Admin
+            </div>
+            <p class="text-[11px] text-rose-600 font-semibold mb-2">
+              Alasan: <span class="italic font-normal text-rose-800">"${order.proof_rejected_reason}"</span>
+            </p>
+            <p class="text-[10px] text-slate-500">
+              Silakan upload ulang foto struk transfer yang valid dan jelas sesuai total tagihan.
+            </p>
+          </div>
+        `;
+        footerSection.innerHTML = `
+          <button onclick="resumePayment('${order.order_id || orderId}', ${order.price}, '${order.proof_rejected_reason}')" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-md shadow-rose-600/20">
+            <i data-lucide="upload-cloud" class="w-4 h-4"></i> Upload Ulang Bukti Bayar
+          </button>
+        `;
       } else {
         const proofImg = order.payment_proof_url || order.proof_image;
-        if (proofImg) {
+        if (proofImg && isWaiting) {
           proofSection.innerHTML = `
             <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3 text-center">
-              <span class="text-[10px] font-bold text-slate-500 block mb-2">Bukti Pembayaran:</span>
-              <img src="${proofImg}" class="w-24 h-24 object-cover mx-auto rounded-xl border border-slate-200 mb-1" />
-              <span class="text-[10px] text-amber-600 font-semibold">Sedang diverifikasi oleh admin</span>
+              <span class="text-[10px] font-bold text-slate-500 block mb-2">Bukti Pembayaran Terkirim:</span>
+              <img src="${proofImg}" class="w-24 h-24 object-cover mx-auto rounded-xl border border-slate-200 mb-1 shadow-sm" />
+              <span class="text-[10px] text-orange-600 font-semibold">Sedang diverifikasi oleh admin</span>
             </div>
           `;
           footerSection.innerHTML = `
@@ -563,11 +600,11 @@
         } else {
           proofSection.innerHTML = `
             <div class="bg-amber-50 border border-amber-200 rounded-2xl p-3 text-center text-[11px] text-amber-800">
-              ${order.proof_rejected_reason ? `<b class="text-rose-600 block mb-1">Bukti Ditolak: ${order.proof_rejected_reason}</b>` : 'Anda belum mengunggah foto bukti pembayaran QRIS.'}
+              Anda belum mengunggah foto bukti transfer QRIS.
             </div>
           `;
           footerSection.innerHTML = `
-            <button onclick="resumePayment('${order.order_id}', ${order.price}, '${order.proof_rejected_reason || ''}')" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm">
+            <button onclick="resumePayment('${order.order_id || orderId}', ${order.price}, '')" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm">
               <i data-lucide="upload-cloud" class="w-4 h-4"></i> Upload Bukti Pembayaran
             </button>
           `;
