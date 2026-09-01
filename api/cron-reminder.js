@@ -17,14 +17,22 @@ export default async function handler(req, res) {
     });
 
     for (const [orderId, order] of Object.entries(resOrders)) {
-      if (!order || order.status !== 'PENDING') continue;
+      if (!order) continue;
 
-      const createdTime = new Date(order.pending_since || order.created_at).getTime();
+      const createdTime = new Date(order.created_at || order.pending_since).getTime();
       const diffMinutes = Math.floor((now - createdTime) / (1000 * 60));
 
-      // 1. PENGINGAT OTOMATIS SETELAH 5 MENIT (Dikirim 1x)
+      // 1. AUTO-DELETE DRAFT_EMAIL JIKA >= 5 MENIT (Tidak input email)
+      if (order.status === 'DRAFT_EMAIL' && diffMinutes >= 5) {
+        await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, { method: 'DELETE' });
+        continue;
+      }
+
+      // Proses hanya status PENDING untuk pengingat & auto-delete 1 jam
+      if (order.status !== 'PENDING') continue;
+
+      // 2. INGATKAN PEMBELI SETELAH 5 MENIT (Status PENDING)
       if (diffMinutes >= 5 && diffMinutes < 60 && !order.reminder_sent) {
-        // Kirim notifikasi chat ke Telegram Pembeli
         if (order.buyer_chat_id) {
           await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
             method: 'POST',
@@ -44,7 +52,6 @@ Silakan segera selesaikan transfer via QRIS dan kirimkan bukti bayar agar pesana
           });
         }
 
-        // Kirim email pengingat ke Email Pembeli
         if (order.email) {
           await transporter.sendMail({
             from: `"eSIMGo Billing" <${GMAIL_USER}>`,
@@ -60,21 +67,16 @@ Silakan segera selesaikan transfer via QRIS dan kirimkan bukti bayar agar pesana
           });
         }
 
-        // Tandai flag reminder_sent agar tidak berulang
         await fetch(`${FIREBASE_DB_URL}/orders/${orderId}/reminder_sent.json`, {
           method: 'PUT',
           body: JSON.stringify(true)
         });
       }
 
-      // 2. OTOMATIS HAPUS DARI FIREBASE JIKA LEBIH DARI 1 JAM (60 MENIT)
+      // 3. AUTO-DELETE PENDING JIKA >= 60 MENIT (1 Jam)
       if (diffMinutes >= 60) {
-        // HAPUS PERMANEN DARI FIREBASE REALTIME DATABASE
-        await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, {
-          method: 'DELETE'
-        });
+        await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, { method: 'DELETE' });
 
-        // Kirim notifikasi pembatalan ke Telegram Pembeli
         if (order.buyer_chat_id) {
           await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
             method: 'POST',
@@ -90,7 +92,6 @@ Ketik /start jika ingin membuat pesanan baru.`,
           });
         }
 
-        // Kirim notifikasi penghapusan ke Grup Admin
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
