@@ -1,6 +1,7 @@
 {
   "name": "esim-store",
   "version": "1.0.0",
+  "type": "module",
   "private": true,
   "dependencies": {
     "nodemailer": "^6.9.13"
