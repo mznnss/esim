@@ -21,21 +21,6 @@ export default async function handler(req, res) {
     if (!order) return res.status(404).json({ error: 'Order tidak ditemukan' });
 
     const proofData = proofUrl || proof_image || null;
-
-    // 1. Update status di Firebase
-    await fetch(`${FIREBASE_DB_URL}/orders/${targetOrderId}.json`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        status: 'WAITING_VERIFICATION',
-        payment_proof_url: proofData,
-        proof_image: proofData,
-        proof_rejected_reason: null, // Bersihkan status tolak lama jika ini upload ulang
-        proof_uploaded_at: new Date().toISOString()
-      })
-    });
-
-    // 2. Kirim notifikasi ke Telegram dengan 2 tombol
     const caption = `📸 *BUKTI PEMBAYARAN MASUK!*\n━━━━━━━━━━━━━━━━━━\n🆔 *Order ID:* \`${targetOrderId}\`\n🌐 *Sumber:* Website\n📦 *Paket:* ${order.package_name || '-'}\n💰 *Nominal:* Rp ${Number(order.price || 0).toLocaleString('id-ID')}\n📧 *Email:* ${order.email || '-'}`;
 
     const replyMarkup = {
@@ -47,8 +32,10 @@ export default async function handler(req, res) {
       ]
     };
 
+    let tgMessageId = null;
+
     if (proofData && proofData.startsWith('http')) {
-      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+      const tgRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -59,8 +46,10 @@ export default async function handler(req, res) {
           reply_markup: replyMarkup
         })
       });
+      const tgData = await tgRes.json();
+      if (tgData.ok) tgMessageId = tgData.result.message_id;
     } else {
-      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      const tgRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -70,7 +59,23 @@ export default async function handler(req, res) {
           reply_markup: replyMarkup
         })
       });
+      const tgData = await tgRes.json();
+      if (tgData.ok) tgMessageId = tgData.result.message_id;
     }
+
+    await fetch(`${FIREBASE_DB_URL}/orders/${targetOrderId}.json`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status: 'WAITING_VERIFICATION',
+        payment_proof_url: proofData,
+        proof_image: proofData,
+        proof_rejected_reason: null,
+        telegram_message_id: tgMessageId,
+        telegram_chat_id: GROUP_ADMIN_ID,
+        proof_uploaded_at: new Date().toISOString()
+      })
+    });
 
     return res.status(200).json({ success: true, message: 'Bukti berhasil diunggah' });
   } catch (err) {
