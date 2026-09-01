@@ -96,7 +96,7 @@ async function sendInvoiceEmail(email, orderId, packageName, price, paymentText,
     to: email,
     subject: `[Menunggu Pembayaran] Invoice Pesanan eSIM #${orderId}`,
     html: `
-      <div style="background-color: #12141a; color: #ffffff; font-family: sans-serif; max-width: 520px; margin: 0 auto; padding: 28px; border-radius: 16px;">
+      <div style="background-color: #12141a; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 28px; border-radius: 16px;">
         <div style="text-align: center; margin-bottom: 20px;">
           <h2 style="color: #c084fc; margin: 0;">eSIMGo Invoice</h2>
           <p style="color: #94a3b8; font-size: 13px;">Segera selesaikan pembayaran pesanan Anda</p>
@@ -151,10 +151,10 @@ Silakan transfer via QRIS dan kirim bukti pembayaran ke chat ini.`;
       to: orderData.email,
       subject: `[PENTING] Pengingat Batas Pembayaran Pesanan #${orderId}`,
       html: `
-        <div style="background-color: #12141a; color: #ffffff; font-family: sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; border-radius: 14px;">
+        <div style="background-color: #12141a; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; border-radius: 14px;">
           <h3 style="color: #f59e0b; margin-top: 0;">⚠️ Pengingat Batas Pembayaran</h3>
-          <p style="color: #cbd5e1; font-size: 13px;">Pesanan Anda <strong>#${orderId}</strong> (${orderData.package_name}) sebesar <strong>Rp ${Number(orderData.price).toLocaleString('id-ID')}</strong> belum diselesaikan.</p>
-          <p style="color: #f87171; font-size: 12px;">Harap segera menyelesaikan pembayaran. Pesanan yang tidak dibayar dalam 1 jam akan otomatis dibatalkan.</p>
+          <p style="color: #cbd5e1; font-size: 13px; line-height: 1.5;">Pesanan Anda <strong>#${orderId}</strong> (${orderData.package_name}) sebesar <strong>Rp ${Number(orderData.price).toLocaleString('id-ID')}</strong> belum diselesaikan.</p>
+          <p style="color: #f87171; font-size: 12px; line-height: 1.5;">Harap segera menyelesaikan pembayaran. Pesanan yang tidak dibayar dalam 1 jam akan otomatis dibatalkan.</p>
         </div>
       `
     });
@@ -549,7 +549,7 @@ _QR Code / PDF telah sukses terkirim ke email & Telegram pembeli._`;
       const buyerChatId = update.message?.chat?.id || update.callback_query?.message?.chat?.id;
       const text = update.message?.text || "";
 
-      // 2.1 /start
+      // 2.1 /start (Greeting Pricelist Lengkap)
       if (text.startsWith('/start')) {
         const resDb = await fetch(`${FIREBASE_DB_URL}/products.json`);
         const dbProducts = (await resDb.json()) || {};
@@ -636,7 +636,7 @@ Silakan klik tombol di bawah untuk memesan:`;
         return res.status(200).json({ ok: true });
       }
 
-      // 2.3 /bantuan
+      // 2.3 /bantuan (Customer Support @rifkyyw)
       if (text.startsWith('/bantuan') || (update.callback_query && update.callback_query.data === "BUY_HELP")) {
         await sendTelegramMsg(buyerChatId, `💬 *PUSAT BANTUAN & CS ESIMGO*
 ━━━━━━━━━━━━━━━━━━
@@ -691,19 +691,25 @@ _Sertakan Order ID Anda jika ingin menanyakan status pesanan._`);
         return res.status(200).json({ ok: true });
       }
 
-      // Memilih salah satu paket
+      // 2.5 Memilih Paket (Universal Lookup - Mencegah "Paket tidak ditemukan")
       if (update.callback_query && update.callback_query.data.startsWith('SELECT_')) {
         const pkgKey = update.callback_query.data.replace('SELECT_', '');
         
         const resDb = await fetch(`${FIREBASE_DB_URL}/products.json`);
         const dbProducts = (await resDb.json()) || {};
 
-        let selected = null;
-        if (pkgKey.includes('_')) {
+        // 1. Cari direct key (misal: p_1772459...)
+        let selected = dbProducts[pkgKey];
+
+        // 2. Cari nested key jika ada separator
+        if (!selected && pkgKey.includes('_')) {
           const [cat, sub] = pkgKey.split('_');
           selected = dbProducts[cat]?.[sub];
-        } else {
-          selected = dbProducts[pkgKey];
+        }
+
+        // 3. Fallback jika struktur array
+        if (!selected && Array.isArray(dbProducts)) {
+          selected = dbProducts[Number(pkgKey)];
         }
 
         if (!selected) {
@@ -732,7 +738,7 @@ _Sertakan Order ID Anda jika ingin menanyakan status pesanan._`);
         return res.status(200).json({ ok: true });
       }
 
-      // 2.5 Input Email (Kirim Invoice Telegram + Email)
+      // 2.6 Input Email (Kirim Invoice Telegram + Email)
       if (text.includes('@') && text.includes('.')) {
         const resOrders = await (await fetch(`${FIREBASE_DB_URL}/orders.json`)).json() || {};
         const draftOrder = Object.entries(resOrders).reverse().find(([_, o]) => o.buyer_chat_id === buyerChatId && o.status === 'DRAFT_EMAIL');
@@ -808,7 +814,7 @@ Silakan transfer lalu *KIRIMKAN FOTO BUKTI PEMBAYARAN* ke chat ini.`;
         }
       }
 
-      // 2.6 Upload Bukti Bayar
+      // 2.7 Upload Bukti Bayar
       if (update.message?.photo) {
         const resOrders = await (await fetch(`${FIREBASE_DB_URL}/orders.json`)).json() || {};
         const pendingOrder = Object.entries(resOrders).reverse().find(([_, o]) => o.buyer_chat_id === buyerChatId && o.status === 'PENDING');
