@@ -767,10 +767,12 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
+              type: 'REJECT_PROOF',
               email: order.email,
               orderId: orderId,
               packageName: order.package_name,
-              customNotes: `⚠️ PERHATIAN: Bukti transfer Anda ditolak oleh Admin.\nAlasan: ${reason}\nSisa batas waktu bayar: ${remainingMinutes} Menit. Silakan buka web eSIMGo untuk upload ulang bukti transfer yang sah.`
+              rejectReason: reason,
+              remainingMinutes: remainingMinutes
             })
           }).catch(e => {});
         }
