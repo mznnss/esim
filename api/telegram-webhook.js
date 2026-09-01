@@ -203,7 +203,7 @@ async function rejectOrderPayment(orderId, rejectReason, adminName, notifyChatId
 
   const rejectMsg = `⚠️ *BUKTI PEMBAYARAN DITOLAK / TIDAK VALID*
 ━━━━━━━━━━━━━━━━━━
-Halo, bukti pembayaran untuk pesanan *#${orderId}* (*${orderData.package_name}*) ditolak oleh Admin.
+Halo, bukti pembayaran untuk pesanan *#${orderId}* (*${orderData.package_name}*) ditolak oleh Admin (${adminName}).
 
 📝 *Alasan:* _${rejectReason}_
 ⏳ *Sisa Batas Waktu Bayar:* ${remainingMinutes} Menit
@@ -263,7 +263,7 @@ Silakan lakukan transfer yang valid sesuai nominal (*Rp ${Number(orderData.price
   }
 
   if (notifyChatId) {
-    await sendTelegramMsg(notifyChatId, `🚫 *Bukti Pembayaran #${orderId} DITOLAK oleh ${adminName}!*\n\n📝 Alasan: _${rejectReason}_\n_Notifikasi telah dikirim ke Telegram & Email pembeli._`);
+    await sendTelegramMsg(notifyChatId, `🚫 *Bukti Pembayaran #${orderId} DITOLAK oleh ${adminName}!*\n\n📝 Alasan: _${rejectReason}_`);
   }
   return true;
 }
@@ -468,7 +468,7 @@ export default async function handler(req, res) {
           return res.status(200).json({ ok: true });
         }
 
-        // 4. Verifikasi Lunas (Termasuk Auto-Potong Stok)
+        // 4. Verifikasi Lunas
         if (data.startsWith('VERIFY_')) {
           let orderId = data.replace('VERIFY_', '');
 
@@ -481,7 +481,6 @@ export default async function handler(req, res) {
             })
           });
 
-          // Ambil order untuk potong stok
           const orderRes = await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`);
           const orderData = await orderRes.json();
           if (orderData?.package_name) {
@@ -623,7 +622,6 @@ export default async function handler(req, res) {
       const buyerChatId = update.message?.chat?.id || update.callback_query?.message?.chat?.id;
       const text = update.message?.text || "";
 
-      // 2.1 /start
       if (text.startsWith('/start')) {
         const resDb = await fetch(`${FIREBASE_DB_URL}/products.json`);
         const dbProducts = (await resDb.json()) || {};
@@ -649,7 +647,6 @@ export default async function handler(req, res) {
         return res.status(200).json({ ok: true });
       }
 
-      // 2.2 /status
       if (text.startsWith('/status') || (update.callback_query && update.callback_query.data === "BUY_STATUS")) {
         const resOrders = await (await fetch(`${FIREBASE_DB_URL}/orders.json`)).json() || {};
         const myOrders = Object.entries(resOrders).filter(([_, o]) => o && String(o.buyer_chat_id) === String(buyerChatId));
@@ -676,13 +673,11 @@ export default async function handler(req, res) {
         return res.status(200).json({ ok: true });
       }
 
-      // 2.3 /bantuan
       if (text.startsWith('/bantuan') || (update.callback_query && update.callback_query.data === "BUY_HELP")) {
         await sendTelegramMsg(buyerChatId, `💬 *PUSAT BANTUAN & CS ESIMGO*\n• 👤 *Customer Support:* @rifkyyw\n• ⏱ *Jam Operasional:* 08.00 - 23.00 WIB\n• 🌐 *Website:* https://goesim.vercel.app`);
         return res.status(200).json({ ok: true });
       }
 
-      // 2.4 Menu Pilih Paket
       if (update.callback_query && update.callback_query.data === "BUY_MENU") {
         const resDb = await fetch(`${FIREBASE_DB_URL}/products.json`);
         const dbProducts = (await resDb.json()) || {};
@@ -699,13 +694,11 @@ export default async function handler(req, res) {
         return res.status(200).json({ ok: true });
       }
 
-      // 2.5 Stok Habis
       if (update.callback_query && update.callback_query.data === "OUT_OF_STOCK") {
         await sendTelegramMsg(buyerChatId, `⚠️ Maaf, stok paket ini sedang habis. Silakan pilih paket lainnya atau hubungi CS.`);
         return res.status(200).json({ ok: true });
       }
 
-      // 2.6 Eksekusi Pilih Paket
       if (update.callback_query && update.callback_query.data.startsWith('P_')) {
         const resDb = await fetch(`${FIREBASE_DB_URL}/products.json`);
         const dbProducts = (await resDb.json()) || {};
@@ -739,7 +732,6 @@ export default async function handler(req, res) {
         return res.status(200).json({ ok: true });
       }
 
-      // 2.7 Input Email
       if (text.includes('@') && text.includes('.')) {
         const resOrders = await (await fetch(`${FIREBASE_DB_URL}/orders.json`)).json() || {};
         const draftOrder = Object.entries(resOrders).reverse().find(([_, o]) => o.buyer_chat_id === buyerChatId && o.status === 'DRAFT_EMAIL');
@@ -790,7 +782,6 @@ export default async function handler(req, res) {
         }
       }
 
-      // 2.8 Upload Bukti Bayar
       if (update.message?.photo) {
         const resOrders = await (await fetch(`${FIREBASE_DB_URL}/orders.json`)).json() || {};
         const pendingOrder = Object.entries(resOrders).reverse().find(([_, o]) => o.buyer_chat_id === buyerChatId && (o.status === 'PENDING' || o.status === 'WAITING_VERIFICATION'));
@@ -812,24 +803,15 @@ export default async function handler(req, res) {
           }
         } catch (e) {}
 
-        await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, {
-          method: 'PATCH',
-          body: JSON.stringify({
-            status: 'WAITING_VERIFICATION',
-            payment_proof_url: proofUrl || null,
-            proof_image: proofUrl || null,
-            proof_rejected_reason: null,
-            proof_uploaded_at: new Date().toISOString()
-          })
-        });
+        const caption = `📸 *BUKTI PEMBAYARAN MASUK!*\n━━━━━━━━━━━━━━━━━━\n🆔 *Order ID:* \`${orderId}\`\n👤 *Pembeli:* @${update.message.from.username || update.message.from.first_name}\n📦 *Paket:* ${orderInfo.package_name}\n💰 *Nominal:* Rp ${Number(orderInfo.price).toLocaleString('id-ID')}\n📧 *Email:* ${orderInfo.email}`;
 
-        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+        const tgRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             chat_id: GROUP_ADMIN_ID,
             photo: photoId,
-            caption: `📸 *BUKTI PEMBAYARAN MASUK!*\n━━━━━━━━━━━━━━━━━━\n🆔 *Order ID:* \`${orderId}\`\n👤 *Pembeli:* @${update.message.from.username || update.message.from.first_name}\n📦 *Paket:* ${orderInfo.package_name}\n💰 *Nominal:* Rp ${Number(orderInfo.price).toLocaleString('id-ID')}\n📧 *Email:* ${orderInfo.email}`,
+            caption: caption,
             parse_mode: 'Markdown',
             reply_markup: {
               inline_keyboard: [
@@ -839,6 +821,21 @@ export default async function handler(req, res) {
                 ]
               ]
             }
+          })
+        });
+        const tgData = await tgRes.json();
+        const tgMessageId = tgData.ok ? tgData.result.message_id : null;
+
+        await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            status: 'WAITING_VERIFICATION',
+            payment_proof_url: proofUrl || null,
+            proof_image: proofUrl || null,
+            proof_rejected_reason: null,
+            telegram_message_id: tgMessageId,
+            telegram_chat_id: GROUP_ADMIN_ID,
+            proof_uploaded_at: new Date().toISOString()
           })
         });
 
