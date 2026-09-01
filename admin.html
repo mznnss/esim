@@ -518,16 +518,21 @@
         for (const [key, o] of orderEntries) {
           if (!o) continue;
           const orderId = o.order_id || key;
+          const orderTime = new Date(o.created_at || o.pending_since).getTime();
+          const diffMinutes = Math.floor((now - orderTime) / (1000 * 60));
 
-          // AUTO-DELETE TRANSAKSI PENDING MELEBIHI 60 MENIT (1 JAM)
-          if (o.status === 'PENDING') {
-            const orderTime = new Date(o.pending_since || o.created_at).getTime();
-            const diffMinutes = Math.floor((now - orderTime) / (1000 * 60));
-
-            if (diffMinutes >= 60) {
+          // 1. AUTO-DELETE DRAFT_EMAIL JIKA >= 5 MENIT
+          if (o.status === 'DRAFT_EMAIL') {
+            if (diffMinutes >= 5) {
               fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, { method: 'DELETE' });
-              continue;
             }
+            continue;
+          }
+
+          // 2. AUTO-DELETE PENDING JIKA >= 60 MENIT (1 JAM)
+          if (o.status === 'PENDING' && diffMinutes >= 60) {
+            fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, { method: 'DELETE' });
+            continue;
           }
 
           const isPaid = o.status === 'PAID' || o.status === 'COMPLETED';
