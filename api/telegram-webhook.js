@@ -90,6 +90,30 @@ function getAllProductsFlat(dbProducts) {
   return list;
 }
 
+async function reduceProductStock(packageName) {
+  if (!packageName) return;
+  try {
+    const res = await fetch(`${FIREBASE_DB_URL}/products.json`);
+    const prods = await res.json() || {};
+    const pClean = packageName.toLowerCase();
+
+    for (const [key, p] of Object.entries(prods)) {
+      if (!p || !p.name) continue;
+      const dbNameClean = p.name.toLowerCase();
+      
+      if (pClean.includes(dbNameClean) || dbNameClean.includes(pClean)) {
+        const currentStock = p.stock !== undefined ? Number(p.stock) : 10;
+        const newStock = Math.max(0, currentStock - 1);
+        await fetch(`${FIREBASE_DB_URL}/products/${key}/stock.json`, {
+          method: 'PUT',
+          body: JSON.stringify(newStock)
+        });
+        break;
+      }
+    }
+  } catch (e) {}
+}
+
 async function sendInvoiceEmail(email, orderId, packageName, price, paymentText, qrisUrl) {
   if (!email) return;
   const transporter = nodemailer.createTransport({
@@ -144,7 +168,6 @@ async function sendInvoiceEmail(email, orderId, packageName, price, paymentText,
   });
 }
 
-// Fungsi Penolakan Bukti Pembayaran Terpadu
 async function rejectOrderPayment(orderId, rejectReason, adminName, notifyChatId) {
   let orderRes = await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`);
   let orderData = await orderRes.json();
@@ -166,7 +189,6 @@ async function rejectOrderPayment(orderId, rejectReason, adminName, notifyChatId
   const remainingMinutes = Math.max(1, 60 - diffMinutes);
   const orderLink = `https://goesim.vercel.app/?orderId=${orderId}`;
 
-  // Reset foto bukti lama dan set flag penolakan
   await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, {
     method: 'PATCH',
     body: JSON.stringify({
@@ -194,12 +216,10 @@ Silakan lakukan transfer yang valid sesuai nominal (*Rp ${Number(orderData.price
     ]
   };
 
-  // Kirim ke Telegram Pembeli (jika pesan lewat Telegram)
   if (orderData.buyer_chat_id) {
     await sendTelegramMsg(orderData.buyer_chat_id, rejectMsg, buyerActionKeyboard);
   }
 
-  // Kirim Email Penolakan ke Pembeli (dengan tombol web langsung)
   if (orderData.email && GMAIL_PASS) {
     const transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -448,7 +468,7 @@ export default async function handler(req, res) {
           return res.status(200).json({ ok: true });
         }
 
-        // 4. Verifikasi Lunas
+        // 4. Verifikasi Lunas (Termasuk Auto-Potong Stok)
         if (data.startsWith('VERIFY_')) {
           let orderId = data.replace('VERIFY_', '');
 
@@ -460,6 +480,13 @@ export default async function handler(req, res) {
               verified_at: new Date().toISOString()
             })
           });
+
+          // Ambil order untuk potong stok
+          const orderRes = await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`);
+          const orderData = await orderRes.json();
+          if (orderData?.package_name) {
+            await reduceProductStock(orderData.package_name);
+          }
 
           await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/editMessageReplyMarkup`, {
             method: 'POST',
@@ -475,13 +502,11 @@ export default async function handler(req, res) {
 
           await sendTelegramMsg(
             adminChatId,
-            `💡 *Order #${orderId} telah diverifikasi LUNAS oleh ${adminName}!*\n\nSilakan *REPLY (Balas)* pesan bukti transfer dengan file PDF atau foto QR Code eSIM untuk dikirim ke pembeli.`,
+            `💡 *Order #${orderId} telah diverifikasi LUNAS & Stok Terpotong oleh ${adminName}!*\n\nSilakan *REPLY (Balas)* pesan bukti transfer dengan file PDF atau foto QR Code eSIM untuk dikirim ke pembeli.`,
             undefined,
             msgId
           );
 
-          const orderRes = await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`);
-          const orderData = await orderRes.json();
           if (orderData?.buyer_chat_id) {
             await sendTelegramMsg(orderData.buyer_chat_id, `🎉 *Pembayaran untuk Order #${orderId} DITERIMA & LUNAS!*\n\nAdmin sedang menyiapkan profile eSIM Anda. File akan segera dikirimkan ke chat ini & email Anda.`);
           }
