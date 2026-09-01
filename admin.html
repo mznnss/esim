@@ -58,7 +58,7 @@
         </div>
         <div>
           <h1 class="text-2xl font-black text-slate-900 leading-tight">Dashboard Pengelola eSIM</h1>
-          <p class="text-xs text-slate-500">Terhubung langsung dengan Bot Notifikasi Telegram & Realtime Database.</p>
+          <p class="text-xs text-slate-500">Terhubung langsung dengan Bot Telegram & Realtime Database.</p>
         </div>
       </div>
 
@@ -113,7 +113,7 @@
       <div class="flex justify-between items-center mb-6">
         <div>
           <h2 class="text-lg font-bold text-slate-900">Pesanan Masuk & Verifikasi</h2>
-          <p class="text-xs text-slate-500">Periksa bukti struk transfer dan kirim profil eSIM ke pembeli</p>
+          <p class="text-xs text-slate-500">Periksa bukti struk transfer dan verifikasi / tolak pesanan</p>
         </div>
         <button onclick="loadOrders()" class="bg-slate-900 hover:bg-slate-800 text-white text-xs px-4 py-2.5 rounded-xl font-bold transition flex items-center gap-1.5">
           <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Refresh Data
@@ -131,7 +131,7 @@
               <th class="p-4">Email Pembeli</th>
               <th class="p-4 text-center">Bukti Bayar</th>
               <th class="p-4 text-center">Status</th>
-              <th class="p-4 text-center">Aksi & Kirim eSIM</th>
+              <th class="p-4 text-center">Aksi & Verifikasi</th>
             </tr>
           </thead>
           <tbody id="orders-table-body" class="divide-y divide-slate-100 font-medium"></tbody>
@@ -270,6 +270,7 @@
       pass: "esim123"
     };
 
+    const BOT_TOKEN = "8636838151:AAFpbytiio0xBSqW7hrqddhfLf3e2XwHrpY";
     const FIREBASE_DB_URL = "https://esim-store-d7580-default-rtdb.europe-west1.firebasedatabase.app";
 
     let currentProducts = {};
@@ -499,7 +500,7 @@
       }
     }
 
-    // ==================== PESANAN MASUK (SINKRON, CEPAT & AUTO-DELETE EXPIRED) ====================
+    // ==================== PESANAN MASUK (SINKRON, VERIFIKASI & TOLAK BUKTI) ====================
     async function loadOrders() {
       const tbody = document.getElementById('orders-table-body');
       try {
@@ -521,7 +522,7 @@
           const orderTime = new Date(o.created_at || o.pending_since).getTime();
           const diffMinutes = Math.floor((now - orderTime) / (1000 * 60));
 
-          // 1. AUTO-DELETE DRAFT_EMAIL JIKA >= 5 MENIT
+          // Auto-delete DRAFT_EMAIL >= 5 Menit
           if (o.status === 'DRAFT_EMAIL') {
             if (diffMinutes >= 5) {
               fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, { method: 'DELETE' });
@@ -529,14 +530,16 @@
             continue;
           }
 
-          // 2. AUTO-DELETE PENDING JIKA >= 60 MENIT (1 JAM)
+          // Auto-delete PENDING >= 60 Menit
           if (o.status === 'PENDING' && diffMinutes >= 60) {
             fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, { method: 'DELETE' });
             continue;
           }
 
-          const isPaid = o.status === 'PAID' || o.status === 'COMPLETED';
+          const isWaiting = o.status === 'WAITING_VERIFICATION';
           const isPending = o.status === 'PENDING';
+          const isPaid = o.status === 'PAID';
+          const isCompleted = o.status === 'COMPLETED';
 
           // Format Waktu WIB
           let displayTime = o.waktu || '-';
@@ -555,7 +558,20 @@
           }
 
           const proofUrl = o.payment_proof_url || o.proof_image || o.proof_url;
-          let statusColor = o.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' : (o.status === 'PAID' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700');
+          
+          let statusBadgeText = o.status || 'PENDING';
+          let statusColor = 'bg-amber-100 text-amber-700';
+
+          if (isCompleted) {
+            statusBadgeText = 'COMPLETED';
+            statusColor = 'bg-emerald-100 text-emerald-700';
+          } else if (isPaid) {
+            statusBadgeText = 'PAID (LUNAS)';
+            statusColor = 'bg-blue-100 text-blue-700';
+          } else if (isWaiting) {
+            statusBadgeText = 'BUKTI MASUK';
+            statusColor = 'bg-orange-100 text-orange-700 animate-pulse';
+          }
 
           tbody.innerHTML += `
             <tr class="hover:bg-slate-50 transition">
@@ -574,18 +590,20 @@
               </td>
               <td class="p-4 text-center whitespace-nowrap">
                 <span class="px-2.5 py-1 text-[11px] rounded-full font-bold ${statusColor}">
-                  ${o.status || 'PENDING'}
+                  ${statusBadgeText}
                 </span>
               </td>
               <td class="p-4 text-center whitespace-nowrap space-x-1.5">
-                ${isPending 
-                  ? `<button onclick="verifyOrder('${orderId}')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-sm">
-                      Verifikasi
+                ${(isWaiting || isPending) 
+                  ? `<button onclick="verifyOrder('${orderId}')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg transition shadow-sm">
+                      ✅ Verifikasi
                      </button>
-                     <button onclick="remindPayment('${orderId}')" class="bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg transition shadow-sm" title="Kirim Pengingat Bayar">
+                     ${proofUrl ? `<button onclick="rejectOrder('${orderId}')" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg transition shadow-sm" title="Tolak bukti bayar / palsu">
+                      ❌ Tolak Bukti
+                     </button>` : `<button onclick="remindPayment('${orderId}')" class="bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold px-2 py-1.5 rounded-lg transition shadow-sm" title="Kirim Pengingat Bayar">
                       ⏰ Ingatkan
-                     </button>`
-                  : (o.status === 'PAID' 
+                     </button>`}`
+                  : (isPaid 
                       ? `<button onclick="openSendEmailModal('${o.email}', '${orderId}', '${o.package_name}')" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition inline-flex items-center gap-1 shadow-sm">
                           <i data-lucide="qr-code" class="w-3.5 h-3.5"></i> Kirim QR/PDF
                          </button>` 
@@ -607,10 +625,74 @@
     async function verifyOrder(orderId) {
       await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, {
         method: 'PATCH',
-        body: JSON.stringify({ status: 'PAID' })
+        body: JSON.stringify({ 
+          status: 'PAID',
+          verified_at: new Date().toISOString()
+        })
       });
-      showToast(`Pesanan ${orderId} telah diverifikasi!`, 'success');
+
+      // Notifikasi ke pembeli via Telegram jika ada chat id
+      try {
+        const res = await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`);
+        const order = await res.json();
+        if (order?.buyer_chat_id) {
+          fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: order.buyer_chat_id,
+              text: `🎉 *Pembayaran untuk Order #${orderId} DITERIMA & LUNAS!*\n\nAdmin sedang menyiapkan profile eSIM Anda. File akan segera dikirimkan ke chat ini & email Anda.`,
+              parse_mode: 'Markdown'
+            })
+          });
+        }
+      } catch (e) {}
+
+      showToast(`Pesanan ${orderId} telah diverifikasi LUNAS!`, 'success');
       loadOrders();
+    }
+
+    async function rejectOrder(orderId) {
+      const reason = prompt(`Masukkan alasan penolakan bukti pembayaran untuk order #${orderId}:`, "Bukti transfer tidak valid / dana belum masuk ke mutasi rekening.");
+      if (!reason) return;
+
+      try {
+        const res = await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`);
+        const order = await res.json();
+
+        const createdTime = new Date(order.pending_since || order.created_at).getTime();
+        const diffMinutes = Math.floor((Date.now() - createdTime) / (1000 * 60));
+        const remainingMinutes = Math.max(1, 60 - diffMinutes);
+
+        await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            status: 'PENDING',
+            payment_proof_url: null,
+            proof_rejected_reason: reason,
+            proof_rejected_at: new Date().toISOString(),
+            reminder_sent: false
+          })
+        });
+
+        // Kirim notifikasi tolak ke Telegram pembeli
+        if (order?.buyer_chat_id) {
+          fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: order.buyer_chat_id,
+              text: `⚠️ *BUKTI PEMBAYARAN DITOLAK*\n━━━━━━━━━━━━━━━━━━\nHalo, bukti pembayaran untuk pesanan *#${orderId}* (*${order.package_name}*) ditolak oleh Admin.\n\n📝 *Alasan:* ${reason}\n⏳ *Sisa Batas Waktu:* ${remainingMinutes} Menit\n\nSilakan lakukan transfer yang valid sesuai nominal (Rp ${Number(order.price).toLocaleString('id-ID')}) dan kirimkan kembali foto struk pembayaran asli ke chat ini.`,
+              parse_mode: 'Markdown'
+            })
+          });
+        }
+
+        showToast(`Bukti pembayaran ${orderId} berhasil ditolak!`, 'info');
+        loadOrders();
+      } catch (e) {
+        showToast('Gagal memproses penolakan bukti', 'error');
+      }
     }
 
     async function remindPayment(orderId) {
