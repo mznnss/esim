@@ -21,6 +21,7 @@ export default async function handler(req, res) {
 
       const createdTime = new Date(order.pending_since || order.created_at).getTime();
       const diffMinutes = Math.floor((now - createdTime) / (1000 * 60));
+      const orderLink = `https://goesim.vercel.app/?orderId=${orderId}`;
 
       // 1. AUTO-DELETE DRAFT_EMAIL (>= 5 Menit tanpa isi email)
       if (order.status === 'DRAFT_EMAIL' && diffMinutes >= 5) {
@@ -33,33 +34,51 @@ export default async function handler(req, res) {
 
       // 2. INGATKAN PEMBELI (Menit ke-5 s/d 59 dan belum upload bukti)
       if (order.status === 'PENDING' && !hasUploadedProof && diffMinutes >= 5 && diffMinutes < 60 && !order.reminder_sent) {
+        // Kunci status dulu agar tidak terjadi spam dobel
         await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, {
           method: 'PATCH',
           body: JSON.stringify({ reminder_sent: true })
         });
 
+        // Notifikasi Telegram Pembeli
         if (order.buyer_chat_id) {
           await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               chat_id: order.buyer_chat_id,
-              text: `⏰ *PENGINGAT PEMBAYARAN (5 MENIT)*\n━━━━━━━━━━━━━━━━━━\nPesanan *#${orderId}* (${order.package_name}) belum menerima pembayaran / bukti transfer.\n\n💰 *Total Tagihan:* Rp ${Number(order.price).toLocaleString('id-ID')}\n⏳ *Sisa Waktu:* ${60 - diffMinutes} Menit\n\nSilakan transfer via QRIS dan kirimkan bukti struk agar pesanan tidak otomatis terhapus sistem.`,
+              text: `⏰ *PENGINGAT PEMBAYARAN (5 MENIT)*\n━━━━━━━━━━━━━━━━━━\nPesanan *#${orderId}* (${order.package_name || '-'}) belum menerima bukti transfer.\n\n💰 *Total Tagihan:* Rp ${Number(order.price || 0).toLocaleString('id-ID')}\n⏳ *Sisa Waktu:* ${60 - diffMinutes} Menit\n\nSilakan transfer via QRIS dan kirimkan struk bukti pembayaran sebelum pesanan otomatis dibatalkan sistem.`,
               parse_mode: 'Markdown'
             })
           });
         }
 
-        if (order.email) {
+        // Email Pengingat dengan Tombol Deep Link
+        if (order.email && GMAIL_PASS) {
           await transporter.sendMail({
             from: `"eSIMGo Billing" <${GMAIL_USER}>`,
             to: order.email,
             subject: `[PENTING] Segera Selesaikan Pembayaran Pesanan #${orderId}`,
             html: `
-              <div style="background-color:#12141a;color:#ffffff;padding:24px;border-radius:14px;font-family:sans-serif;max-width:500px;margin:0 auto;">
-                <h3 style="color:#f59e0b;margin-top:0;">⏰ Pengingat Pembayaran eSIMGo</h3>
-                <p style="color:#cbd5e1;font-size:13px;">Pesanan Anda <b>#${orderId}</b> (${order.package_name}) sebesar <b>Rp ${Number(order.price).toLocaleString('id-ID')}</b> belum dibayar.</p>
-                <p style="color:#f87171;font-size:12px;">Sisa batas waktu: <b>${60 - diffMinutes} Menit</b>. Segera transfer & upload bukti sebelum pesanan dibatalkan sistem.</p>
+              <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:520px;margin:0 auto;padding:28px;border-radius:16px;background-color:#12141a;color:#ffffff;text-align:center;">
+                <h3 style="color:#f59e0b;margin-top:0;font-size:20px;">⏰ Pengingat Pembayaran eSIMGo</h3>
+                <p style="color:#cbd5e1;font-size:13px;line-height:1.6;text-align:left;">
+                  Pesanan Anda <b>#${orderId}</b> (<b>${order.package_name || '-'}</b>) sebesar <b>Rp ${Number(order.price || 0).toLocaleString('id-ID')}</b> belum menerima pembayaran.
+                </p>
+                <div style="background-color:#1e293b;padding:14px;border-radius:10px;margin:16px 0;text-align:left;border-left:3px solid #f59e0b;">
+                  <p style="color:#fca5a5;font-size:12px;margin:0;">
+                    ⏳ Sisa batas waktu: <b>${60 - diffMinutes} Menit</b> sebelum pesanan otomatis dibatalkan & dihapus sistem.
+                  </p>
+                </div>
+                <div style="margin:24px 0;">
+                  <a href="${orderLink}" style="background-color:#4f46e5;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:12px;font-size:13px;font-weight:bold;display:inline-block;">
+                    💳 Selesaikan Pembayaran & Bukti Transfer →
+                  </a>
+                </div>
+                <p style="color:#64748b;font-size:11px;margin-top:20px;">
+                  Atau akses langsung tautan berikut:<br/>
+                  <a href="${orderLink}" style="color:#38bdf8;word-break:break-all;">${orderLink}</a>
+                </p>
               </div>
             `
           });
