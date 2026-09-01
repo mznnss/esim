@@ -981,6 +981,35 @@
     updateHistoryBadge();
     loadCatalogProducts();
     initLivePurchaseTicker();
+
+    // AUTO-OPEN DETAIL ORDER JIKA DIAKSES LEWAT LINK EMAIL (?orderId=ORD-XXXXXX)
+async function checkUrlParamsAndOpenOrder() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const targetOrderId = urlParams.get('orderId');
+
+  if (targetOrderId) {
+    try {
+      showToast(`Membuka detail pesanan #${targetOrderId}...`, 'info');
+      const res = await fetch(`${FIREBASE_DB_URL}/orders/${targetOrderId}.json`);
+      const orderData = await res.json();
+
+      if (orderData) {
+        cachedOrders[targetOrderId] = orderData;
+        saveOrderToLocalStorage(targetOrderId);
+        viewOrderDetail(targetOrderId);
+      } else {
+        showToast(`Pesanan #${targetOrderId} tidak ditemukan / sudah kadaluarsa.`, 'error');
+      }
+    } catch (e) {
+      console.error("Gagal auto-open order dari URL:", e);
+    }
+  }
+}
+
+// Jalankan saat web selesai dimuat
+window.addEventListener('DOMContentLoaded', () => {
+  checkUrlParamsAndOpenOrder();
+});
   </script>
 </body>
 </html>
