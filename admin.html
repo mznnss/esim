@@ -499,7 +499,7 @@
       }
     }
 
-    // ==================== PESANAN MASUK (SINKRON & CEPAT) ====================
+    // ==================== PESANAN MASUK (SINKRON, CEPAT & AUTO-DELETE EXPIRED) ====================
     async function loadOrders() {
       const tbody = document.getElementById('orders-table-body');
       try {
@@ -512,14 +512,26 @@
           return;
         }
 
-        // Pertahankan Key Firebase sebagai Order ID
+        const now = Date.now();
         const orderEntries = Object.entries(data).reverse();
 
-        orderEntries.forEach(([key, o]) => {
-          if (!o) return;
+        for (const [key, o] of orderEntries) {
+          if (!o) continue;
           const orderId = o.order_id || key;
+
+          // AUTO-DELETE TRANSAKSI PENDING MELEBIHI 60 MENIT (1 JAM)
+          if (o.status === 'PENDING') {
+            const orderTime = new Date(o.pending_since || o.created_at).getTime();
+            const diffMinutes = Math.floor((now - orderTime) / (1000 * 60));
+
+            if (diffMinutes >= 60) {
+              fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, { method: 'DELETE' });
+              continue;
+            }
+          }
+
           const isPaid = o.status === 'PAID' || o.status === 'COMPLETED';
-          const isCompleted = o.status === 'COMPLETED';
+          const isPending = o.status === 'PENDING';
 
           // Format Waktu WIB
           let displayTime = o.waktu || '-';
@@ -537,13 +549,8 @@
             }
           }
 
-          // Link Bukti Bayar
           const proofUrl = o.payment_proof_url || o.proof_image || o.proof_url;
-
-          // Status Badge Styling
-          let statusColor = 'bg-amber-100 text-amber-700';
-          if (o.status === 'COMPLETED') statusColor = 'bg-emerald-100 text-emerald-700';
-          else if (o.status === 'PAID') statusColor = 'bg-blue-100 text-blue-700';
+          let statusColor = o.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' : (o.status === 'PAID' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700');
 
           tbody.innerHTML += `
             <tr class="hover:bg-slate-50 transition">
@@ -565,14 +572,19 @@
                   ${o.status || 'PENDING'}
                 </span>
               </td>
-              <td class="p-4 text-center whitespace-nowrap space-x-2">
-                ${!isPaid 
-                  ? `<button onclick="verifyOrder('${orderId}')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-1.5 rounded-lg transition shadow-sm">
-                      Verifikasi Lunas
-                     </button>` 
-                  : `<button onclick="openSendEmailModal('${o.email}', '${orderId}', '${o.package_name}')" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition inline-flex items-center gap-1 shadow-sm">
-                      <i data-lucide="qr-code" class="w-3.5 h-3.5"></i> Kirim QR / PDF
+              <td class="p-4 text-center whitespace-nowrap space-x-1.5">
+                ${isPending 
+                  ? `<button onclick="verifyOrder('${orderId}')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-sm">
+                      Verifikasi
+                     </button>
+                     <button onclick="remindPayment('${orderId}')" class="bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg transition shadow-sm" title="Kirim Pengingat Bayar">
+                      ⏰ Ingatkan
                      </button>`
+                  : (o.status === 'PAID' 
+                      ? `<button onclick="openSendEmailModal('${o.email}', '${orderId}', '${o.package_name}')" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition inline-flex items-center gap-1 shadow-sm">
+                          <i data-lucide="qr-code" class="w-3.5 h-3.5"></i> Kirim QR/PDF
+                         </button>` 
+                      : `<span class="text-xs text-emerald-600 font-bold">Terkirim</span>`)
                 }
                 <button onclick="deleteOrder('${orderId}')" class="text-rose-500 hover:text-rose-700 text-xs font-bold px-2 py-1">
                   Hapus
@@ -580,7 +592,7 @@
               </td>
             </tr>
           `;
-        });
+        }
         lucide.createIcons();
       } catch (err) {
         console.error("Gagal load orders:", err);
@@ -594,6 +606,26 @@
       });
       showToast(`Pesanan ${orderId} telah diverifikasi!`, 'success');
       loadOrders();
+    }
+
+    async function remindPayment(orderId) {
+      if (!confirm(`Kirim pengingat pembayaran ke pembeli untuk order #${orderId}?`)) return;
+
+      try {
+        const res = await fetch('/api/remind-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          showToast(`Pengingat berhasil dikirim (${orderId})!`, 'success');
+        } else {
+          showToast(data.error || 'Gagal mengirim pengingat', 'error');
+        }
+      } catch (e) {
+        showToast('Koneksi gagal saat kirim pengingat', 'error');
+      }
     }
 
     async function deleteOrder(orderId) {
