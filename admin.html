@@ -12,14 +12,14 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>body { font-family: 'Plus Jakarta Sans', sans-serif; }</style>
 </head>
-<body class="bg-slate-100 min-h-screen text-slate-800 relative">
+<body class="bg-slate-100 min-h-screen text-slate-800 relative antialiased">
 
   <!-- TOAST CONTAINER -->
-  <div id="toast-container" class="fixed top-5 right-5 z-[999] flex flex-col gap-2 max-w-xs w-full pointer-events-none"></div>
+  <div id="toast-container" class="fixed top-5 right-5 z-[9999] flex flex-col gap-2 max-w-xs w-full pointer-events-none"></div>
 
   <!-- SCREEN 1: PANEL LOGIN -->
-  <div id="login-screen" class="fixed inset-0 z-50 bg-slate-900 flex items-center justify-center p-4">
-    <div class="bg-white rounded-3xl max-w-sm w-full p-8 shadow-2xl text-center">
+  <div id="login-screen" class="fixed inset-0 z-50 bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-8 shadow-2xl text-center border border-slate-100">
       <div class="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-500/30">
         <i data-lucide="lock" class="w-6 h-6"></i>
       </div>
@@ -29,11 +29,11 @@
       <form onsubmit="handleLogin(event)" class="space-y-3.5 text-left text-xs">
         <div>
           <label class="block font-bold text-slate-700 mb-1">Username</label>
-          <input type="text" id="login-user" required placeholder="admin" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-800 font-medium" />
+          <input type="text" id="login-user" required placeholder="admin" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-800 font-medium transition" />
         </div>
         <div>
           <label class="block font-bold text-slate-700 mb-1">PIN / Password</label>
-          <input type="password" id="login-pass" required placeholder="••••••••" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-800 font-medium" />
+          <input type="password" id="login-pass" required placeholder="••••••••" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-800 font-medium transition" />
         </div>
         <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition text-xs shadow-md shadow-indigo-600/20 mt-2">
           Masuk Dashboard
@@ -141,9 +141,62 @@
 
   </div>
 
+  <!-- MODAL KONFIRMASI / ACTION KUSTOM (GANTI CONFIRM() JADUL) -->
+  <div id="custom-confirm-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 text-center animate-in fade-in zoom-in duration-200">
+      <div id="confirm-modal-icon-container" class="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3">
+        <i id="confirm-modal-icon" data-lucide="help-circle" class="w-6 h-6"></i>
+      </div>
+      <h3 id="confirm-modal-title" class="text-base font-bold text-slate-900 mb-1">Konfirmasi</h3>
+      <p id="confirm-modal-desc" class="text-xs text-slate-500 mb-6 leading-relaxed"></p>
+      <div class="grid grid-cols-2 gap-2.5">
+        <button onclick="closeConfirmModal(false)" class="w-full py-2.5 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition">
+          Batal
+        </button>
+        <button id="btn-confirm-execute" onclick="closeConfirmModal(true)" class="w-full py-2.5 text-xs font-bold text-white rounded-xl shadow-sm transition">
+          Lanjutkan
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL TOLAK BUKTI BAYAR (GANTI PROMPT() JELEK) -->
+  <div id="reject-reason-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in duration-200">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="bg-rose-100 text-rose-600 p-2 rounded-xl"><i data-lucide="alert-triangle" class="w-4 h-4"></i></span>
+        <h3 class="text-base font-bold text-slate-900">Tolak Bukti Pembayaran</h3>
+      </div>
+      <p class="text-xs text-slate-500 mb-4">Pilih atau ketik alasan penolakan untuk pesanan <b id="reject-target-order-text" class="text-slate-800 font-mono"></b>. Notifikasi ini akan langsung dikirimkan ke pembeli.</p>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Alasan Penolakan</label>
+          <textarea id="reject-reason-input" rows="3" class="w-full border border-slate-200 rounded-xl p-3 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-rose-500 transition leading-relaxed"></textarea>
+        </div>
+
+        <div class="flex flex-wrap gap-1.5 pt-1">
+          <span class="text-[11px] text-slate-400 font-semibold block w-full">Template Cepat:</span>
+          <button type="button" onclick="setRejectTemplate('Bukti transfer tidak valid / dana belum masuk ke mutasi rekening.')" class="text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-2.5 py-1 rounded-lg transition font-medium">Dana Belum Masuk</button>
+          <button type="button" onclick="setRejectTemplate('Nominal yang ditransfer kurang dari total tagihan invoice.')" class="text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-2.5 py-1 rounded-lg transition font-medium">Nominal Kurang</button>
+          <button type="button" onclick="setRejectTemplate('Foto bukti transfer buram / tidak terbaca dengan jelas.')" class="text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-2.5 py-1 rounded-lg transition font-medium">Foto Buram</button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2.5 pt-3">
+          <button onclick="closeRejectModal()" class="w-full py-2.5 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition">
+            Batal
+          </button>
+          <button id="btn-execute-reject" onclick="executeRejectOrder()" class="w-full py-2.5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-md shadow-rose-600/20 transition flex items-center justify-center gap-1.5">
+            <i data-lucide="send" class="w-3.5 h-3.5"></i> Tolak & Kirim
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL KIRIM EMAIL & ATTACHMENT QR/PDF -->
   <div id="send-email-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 relative animate-in fade-in zoom-in duration-200">
       <button onclick="closeSendEmailModal()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-600">
         <i data-lucide="x" class="w-5 h-5"></i>
       </button>
@@ -177,10 +230,10 @@
 
         <div>
           <label class="block font-bold text-slate-700 mb-1">Catatan Tambahan (Opsional)</label>
-          <input type="text" id="email-modal-notes" placeholder="Contoh: SM-DP+ Address: rsp.truphone.com..." class="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-800 outline-none focus:ring-2 focus:ring-indigo-600" />
+          <input type="text" id="email-modal-notes" placeholder="Contoh: SM-DP+ Address: rsp.truphone.com..." class="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-800 outline-none focus:ring-2 focus:ring-indigo-600 transition" />
         </div>
 
-        <button id="btn-execute-send-email" onclick="executeSendEmailWithAttachment()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition text-xs flex items-center justify-center gap-2 shadow-sm">
+        <button id="btn-execute-send-email" onclick="executeSendEmailWithAttachment()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition text-xs flex items-center justify-center gap-2 shadow-md shadow-indigo-600/20">
           <i data-lucide="mail-check" class="w-4 h-4"></i> Kirim Email Sekarang
         </button>
       </div>
@@ -189,7 +242,7 @@
 
   <!-- MODAL EDIT / TAMBAH PRODUK -->
   <div id="product-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 relative animate-in fade-in zoom-in duration-200">
       <button onclick="closeProductModal()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-600">
         <i data-lucide="x" class="w-5 h-5"></i>
       </button>
@@ -241,7 +294,7 @@
           <input type="text" id="prod-badge" placeholder="PROMO SPESIAL / Best Seller" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600" />
         </div>
 
-        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition text-sm mt-4">
+        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition text-sm mt-4 shadow-md shadow-indigo-600/20">
           Simpan Layanan
         </button>
       </form>
@@ -250,7 +303,7 @@
 
   <!-- MODAL PREVIEW BUKTI TRANSFER -->
   <div id="image-modal" class="fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div class="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl relative text-center">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl relative text-center border border-slate-100 animate-in fade-in zoom-in duration-200">
       <button onclick="closeImageModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
         <i data-lucide="x" class="w-5 h-5"></i>
       </button>
@@ -277,6 +330,8 @@
     let isStoreOpen = true;
     let activeSendEmailOrder = null;
     let selectedEsimFileBase64 = null;
+    let activeRejectOrderId = null;
+    let confirmCallback = null;
 
     // OTENTIKASI STATUS LOGIN
     function checkAuth() {
@@ -344,6 +399,37 @@
         toast.classList.add('translate-y-[-20px]', 'opacity-0');
         setTimeout(() => toast.remove(), 300);
       }, 3500);
+    }
+
+    // MODAL KONFIRMASI KUSTOM
+    function showConfirmModal({ title, desc, btnText, btnColor, icon, onConfirm }) {
+      document.getElementById('confirm-modal-title').innerText = title || "Konfirmasi";
+      document.getElementById('confirm-modal-desc').innerText = desc || "Apakah Anda yakin ingin melanjutkan tindakan ini?";
+      
+      const btn = document.getElementById('btn-confirm-execute');
+      btn.innerText = btnText || "Lanjutkan";
+      btn.className = `w-full py-2.5 text-xs font-bold text-white rounded-xl shadow-sm transition ${btnColor || 'bg-indigo-600 hover:bg-indigo-700'}`;
+      
+      const iconContainer = document.getElementById('confirm-modal-icon-container');
+      iconContainer.className = `w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3 ${btnColor?.includes('rose') ? 'bg-rose-100 text-rose-600' : 'bg-indigo-100 text-indigo-600'}`;
+      
+      const iconEl = document.getElementById('confirm-modal-icon');
+      iconEl.setAttribute('data-lucide', icon || 'help-circle');
+      
+      confirmCallback = onConfirm;
+      
+      document.getElementById('custom-confirm-modal').classList.remove('hidden');
+      document.getElementById('custom-confirm-modal').classList.add('flex');
+      lucide.createIcons();
+    }
+
+    function closeConfirmModal(result) {
+      document.getElementById('custom-confirm-modal').classList.add('hidden');
+      document.getElementById('custom-confirm-modal').classList.remove('flex');
+      if (result && typeof confirmCallback === 'function') {
+        confirmCallback();
+      }
+      confirmCallback = null;
     }
 
     // ==================== SAKLAR TOKO ====================
@@ -421,7 +507,7 @@
               <td class="p-3 font-bold text-emerald-600">Rp ${Number(p.price || 0).toLocaleString('id-ID')}</td>
               <td class="p-3 text-center space-x-2">
                 <button onclick="editProduct('${key}')" class="text-indigo-600 hover:text-indigo-800 text-xs font-bold">Edit</button>
-                <button onclick="deleteProduct('${key}')" class="text-rose-600 hover:text-rose-800 text-xs font-bold">Hapus</button>
+                <button onclick="confirmDeleteProduct('${key}')" class="text-rose-600 hover:text-rose-800 text-xs font-bold">Hapus</button>
               </td>
             </tr>
           `;
@@ -492,12 +578,19 @@
       loadProducts();
     }
 
-    async function deleteProduct(id) {
-      if (confirm('Hapus paket ini dari katalog?')) {
-        await fetch(`${FIREBASE_DB_URL}/products/${id}.json`, { method: 'DELETE' });
-        showToast('Paket berhasil dihapus.', 'info');
-        loadProducts();
-      }
+    function confirmDeleteProduct(id) {
+      showConfirmModal({
+        title: "Hapus Paket?",
+        desc: `Paket ini akan dihapus permanen dari daftar katalog produk.`,
+        btnText: "Hapus Sekarang",
+        btnColor: "bg-rose-600 hover:bg-rose-700",
+        icon: "trash-2",
+        onConfirm: async () => {
+          await fetch(`${FIREBASE_DB_URL}/products/${id}.json`, { method: 'DELETE' });
+          showToast('Paket berhasil dihapus.', 'info');
+          loadProducts();
+        }
+      });
     }
 
     // ==================== PESANAN MASUK (SINKRON, VERIFIKASI & TOLAK BUKTI) ====================
@@ -598,9 +691,9 @@
                   ? `<button onclick="verifyOrder('${orderId}')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg transition shadow-sm">
                       ✅ Verifikasi
                      </button>
-                     ${proofUrl ? `<button onclick="rejectOrder('${orderId}')" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg transition shadow-sm" title="Tolak bukti bayar / palsu">
+                     ${proofUrl ? `<button onclick="openRejectModal('${orderId}')" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg transition shadow-sm" title="Tolak bukti bayar / palsu">
                       ❌ Tolak Bukti
-                     </button>` : `<button onclick="remindPayment('${orderId}')" class="bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold px-2 py-1.5 rounded-lg transition shadow-sm" title="Kirim Pengingat Bayar">
+                     </button>` : `<button onclick="confirmRemindPayment('${orderId}')" class="bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold px-2 py-1.5 rounded-lg transition shadow-sm" title="Kirim Pengingat Bayar">
                       ⏰ Ingatkan
                      </button>`}`
                   : (isPaid 
@@ -609,7 +702,7 @@
                          </button>` 
                       : `<span class="text-xs text-emerald-600 font-bold">Terkirim</span>`)
                 }
-                <button onclick="deleteOrder('${orderId}')" class="text-rose-500 hover:text-rose-700 text-xs font-bold px-2 py-1">
+                <button onclick="confirmDeleteOrder('${orderId}')" class="text-rose-500 hover:text-rose-700 text-xs font-bold px-2 py-1">
                   Hapus
                 </button>
               </td>
@@ -631,7 +724,6 @@
         })
       });
 
-      // Notifikasi ke pembeli via Telegram jika ada chat id
       try {
         const res = await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`);
         const order = await res.json();
@@ -652,9 +744,35 @@
       loadOrders();
     }
 
-    async function rejectOrder(orderId) {
-      const reason = prompt(`Masukkan alasan penolakan bukti pembayaran untuk order #${orderId}:`, "Bukti transfer tidak valid / dana belum masuk ke mutasi rekening.");
-      if (!reason) return;
+    // TOLAK BUKTI BAYAR KUSTOM MODAL
+    function openRejectModal(orderId) {
+      activeRejectOrderId = orderId;
+      document.getElementById('reject-target-order-text').innerText = `#${orderId}`;
+      document.getElementById('reject-reason-input').value = "Bukti transfer tidak valid / dana belum masuk ke mutasi rekening.";
+      document.getElementById('reject-reason-modal').classList.remove('hidden');
+      document.getElementById('reject-reason-modal').classList.add('flex');
+      lucide.createIcons();
+    }
+
+    function closeRejectModal() {
+      document.getElementById('reject-reason-modal').classList.add('hidden');
+      document.getElementById('reject-reason-modal').classList.remove('flex');
+      activeRejectOrderId = null;
+    }
+
+    function setRejectTemplate(text) {
+      document.getElementById('reject-reason-input').value = text;
+    }
+
+    async function executeRejectOrder() {
+      if (!activeRejectOrderId) return;
+      const orderId = activeRejectOrderId;
+      const reason = document.getElementById('reject-reason-input').value.trim() || "Bukti transfer tidak valid / dana belum masuk ke mutasi rekening.";
+      
+      const btn = document.getElementById('btn-execute-reject');
+      const originalText = btn.innerHTML;
+      btn.innerHTML = `<i data-lucide="loader" class="w-3.5 h-3.5 animate-spin"></i> Menolak...`;
+      btn.disabled = true;
 
       try {
         const res = await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`);
@@ -675,7 +793,6 @@
           })
         });
 
-        // Kirim notifikasi tolak ke Telegram pembeli
         if (order?.buyer_chat_id) {
           fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
             method: 'POST',
@@ -688,39 +805,58 @@
           });
         }
 
-        showToast(`Bukti pembayaran ${orderId} berhasil ditolak!`, 'info');
+        closeRejectModal();
+        showToast(`Bukti pembayaran #${orderId} berhasil ditolak!`, 'info');
         loadOrders();
       } catch (e) {
         showToast('Gagal memproses penolakan bukti', 'error');
+      } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        lucide.createIcons();
       }
     }
 
-    async function remindPayment(orderId) {
-      if (!confirm(`Kirim pengingat pembayaran ke pembeli untuk order #${orderId}?`)) return;
-
-      try {
-        const res = await fetch('/api/remind-order', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ orderId })
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-          showToast(`Pengingat berhasil dikirim (${orderId})!`, 'success');
-        } else {
-          showToast(data.error || 'Gagal mengirim pengingat', 'error');
+    function confirmRemindPayment(orderId) {
+      showConfirmModal({
+        title: "Kirim Pengingat?",
+        desc: `Kirim notifikasi pengingat pembayaran ke Telegram & Email pembeli untuk order #${orderId}?`,
+        btnText: "Kirim Pengingat",
+        btnColor: "bg-amber-500 hover:bg-amber-600",
+        icon: "bell",
+        onConfirm: async () => {
+          try {
+            const res = await fetch('/api/remind-order', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ orderId })
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+              showToast(`Pengingat berhasil dikirim (${orderId})!`, 'success');
+            } else {
+              showToast(data.error || 'Gagal mengirim pengingat', 'error');
+            }
+          } catch (e) {
+            showToast('Koneksi gagal saat kirim pengingat', 'error');
+          }
         }
-      } catch (e) {
-        showToast('Koneksi gagal saat kirim pengingat', 'error');
-      }
+      });
     }
 
-    async function deleteOrder(orderId) {
-      if (confirm(`Hapus transaksi ${orderId}?`)) {
-        await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, { method: 'DELETE' });
-        showToast('Transaksi dihapus.', 'info');
-        loadOrders();
-      }
+    function confirmDeleteOrder(orderId) {
+      showConfirmModal({
+        title: "Hapus Transaksi?",
+        desc: `Pesanan #${orderId} akan dihapus secara permanen dari database.`,
+        btnText: "Hapus Permanen",
+        btnColor: "bg-rose-600 hover:bg-rose-700",
+        icon: "trash-2",
+        onConfirm: async () => {
+          await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, { method: 'DELETE' });
+          showToast(`Transaksi #${orderId} dihapus.`, 'info');
+          loadOrders();
+        }
+      });
     }
 
     // MODAL KIRIM EMAIL
