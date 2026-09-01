@@ -546,13 +546,19 @@
       });
     }
 
+    // FUNGSI POTONG STOK AKURAT
     async function reduceProductStock(packageName) {
+      if (!packageName) return;
       try {
         const res = await fetch(`${FIREBASE_DB_URL}/products.json`);
         const prods = await res.json() || {};
+        const pClean = packageName.toLowerCase();
+
         for (const [key, p] of Object.entries(prods)) {
-          if (!p) continue;
-          if (packageName.includes(p.name) || p.name.includes(packageName)) {
+          if (!p || !p.name) continue;
+          const dbNameClean = p.name.toLowerCase();
+          
+          if (pClean.includes(dbNameClean) || dbNameClean.includes(pClean)) {
             const currentStock = p.stock !== undefined ? Number(p.stock) : 10;
             const newStock = Math.max(0, currentStock - 1);
             await fetch(`${FIREBASE_DB_URL}/products/${key}/stock.json`, {
@@ -562,7 +568,9 @@
             break;
           }
         }
-      } catch (e) {}
+      } catch (e) {
+        console.error("Gagal potong stok:", e);
+      }
     }
 
     // PESANAN MASUK
@@ -672,32 +680,58 @@
     }
 
     async function verifyOrder(orderId) {
-      await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status: 'PAID', verified_at: new Date().toISOString() })
-      });
+      try {
+        const res = await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`);
+        const order = await res.json();
+        if (!order) return;
 
-      const res = await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`);
-      const order = await res.json();
-      if (order?.package_name) {
-        await reduceProductStock(order.package_name);
-      }
+        await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, {
+          method: 'PATCH',
+          body: JSON.stringify({ 
+            status: 'PAID', 
+            verified_by: 'Admin (Web Dashboard)',
+            verified_at: new Date().toISOString() 
+          })
+        });
 
-      if (order?.buyer_chat_id) {
-        fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        // Potong stok otomatis
+        if (order.package_name) {
+          await reduceProductStock(order.package_name);
+        }
+
+        // Broadcast Notifikasi ke Grup Telegram
+        fetch('/api/notify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            chat_id: order.buyer_chat_id,
-            text: `🎉 *Pembayaran untuk Order #${orderId} DITERIMA & LUNAS!*\n\nAdmin sedang menyiapkan profile eSIM Anda. File akan segera dikirimkan ke chat ini & email Anda.`,
-            parse_mode: 'Markdown'
+            type: 'ORDER_VERIFIED',
+            orderId: orderId,
+            packageName: order.package_name,
+            price: order.price,
+            email: order.email,
+            completedBy: 'Admin (Web Dashboard)'
           })
-        });
-      }
+        }).catch(e => {});
 
-      showToast(`Pesanan ${orderId} diverifikasi & stok terpotong!`, 'success');
-      loadProducts();
-      loadOrders();
+        // Notifikasi ke Telegram Pembeli
+        if (order.buyer_chat_id) {
+          fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: order.buyer_chat_id,
+              text: `🎉 *Pembayaran untuk Order #${orderId} DITERIMA & LUNAS!*\n\nAdmin sedang menyiapkan profile eSIM Anda. File akan segera dikirimkan ke chat ini & email Anda.`,
+              parse_mode: 'Markdown'
+            })
+          }).catch(e => {});
+        }
+
+        showToast(`Pesanan #${orderId} diverifikasi LUNAS & stok terpotong!`, 'success');
+        loadProducts();
+        loadOrders();
+      } catch (err) {
+        showToast('Gagal memverifikasi pesanan', 'error');
+      }
     }
 
     function openRejectModal(orderId) {
@@ -748,21 +782,38 @@
           })
         });
 
-        // 2. Notifikasi ke Bot Telegram Pembeli
-        if (order?.buyer_chat_id) {
+        // 2. Broadcast Laporan Penolakan ke Grup Telegram
+        fetch('/api/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'PROOF_REJECTED',
+            orderId: orderId,
+            packageName: order.package_name,
+            price: order.price,
+            email: order.email,
+            customNotes: reason
+          })
+        }).catch(e => {});
+
+        // 3. Notifikasi ke Telegram Pembeli
+        if (order.buyer_chat_id) {
           fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               chat_id: order.buyer_chat_id,
-              text: `⚠️ *BUKTI PEMBAYARAN DITOLAK*\n━━━━━━━━━━━━━━━━━━\nHalo, bukti pembayaran untuk pesanan *#${orderId}* (*${order.package_name}*) ditolak oleh Admin.\n\n📝 *Alasan:* ${reason}\n⏳ *Sisa Batas Waktu:* ${remainingMinutes} Menit\n\nSilakan lakukan transfer yang valid sesuai nominal (Rp ${Number(order.price).toLocaleString('id-ID')}) dan kirimkan kembali foto struk pembayaran asli ke chat ini.`,
-              parse_mode: 'Markdown'
+              text: `⚠️ *BUKTI PEMBAYARAN DITOLAK*\n━━━━━━━━━━━━━━━━━━\nHalo, bukti pembayaran untuk pesanan *#${orderId}* (*${order.package_name}*) ditolak oleh Admin.\n\n📝 *Alasan:* ${reason}\n⏳ *Sisa Batas Waktu:* ${remainingMinutes} Menit\n\nSilakan lakukan transfer yang valid sesuai nominal (Rp ${Number(order.price).toLocaleString('id-ID')}) dan kirimkan kembali foto struk pembayaran asli ke chat ini atau via web.`,
+              parse_mode: 'Markdown',
+              reply_markup: {
+                inline_keyboard: [[{ text: "🌐 Upload Ulang via Web", url: `https://goesim.vercel.app/?orderId=${orderId}` }]]
+              }
             })
-          });
+          }).catch(e => {});
         }
 
-        // 3. Kirim Email Notifikasi Tolak ke Pembeli
-        if (order?.email) {
+        // 4. Kirim Email Penolakan ke Pembeli
+        if (order.email) {
           fetch('/api/send-email', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -873,6 +924,8 @@
       btn.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Mengirim...`;
       btn.disabled = true;
 
+      const customNotes = document.getElementById('email-modal-notes').value.trim();
+
       try {
         const res = await fetch('/api/send-email', {
           method: 'POST',
@@ -882,11 +935,25 @@
             orderId: activeSendEmailOrder.orderId,
             packageName: activeSendEmailOrder.packageName,
             qrCodeBase64: selectedEsimFileBase64,
-            customNotes: document.getElementById('email-modal-notes').value.trim()
+            customNotes: customNotes
           })
         });
         const data = await res.json();
+
         if (res.ok && data.success) {
+          // Broadcast Status Selesai ke Telegram Grup
+          fetch('/api/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'ORDER_COMPLETED',
+              orderId: activeSendEmailOrder.orderId,
+              packageName: activeSendEmailOrder.packageName,
+              email: activeSendEmailOrder.email,
+              completedBy: 'Admin (Web Dashboard)'
+            })
+          }).catch(e => {});
+
           showToast(`QR/PDF eSIM berhasil dikirim ke ${activeSendEmailOrder.email}!`, 'success');
           closeSendEmailModal();
           loadOrders();
