@@ -6,11 +6,9 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
-  const { orderId, packageName, price, email, type, completedBy, proofUrl } = req.body;
+  const { orderId, packageName, price, email, type, completedBy, customNotes, proofUrl } = req.body;
 
   const BOT_TOKEN = "8636838151:AAFpbytiio0xBSqW7hrqddhfLf3e2XwHrpY";
-  
-  // Daftar target: Grup Telegram & Japri Admin 1 / Admin 2
   const ALL_RECIPIENTS = [
     "-1004352073054", // Grup Telegram
     "8731786333",     // Japri Admin 1
@@ -49,7 +47,6 @@ export default async function handler(req, res) {
 📧 *Email:* ${email || '-'}
 ⏱ *Waktu:* ${nowWIB}`;
 
-    // Dua tombol: Verifikasi & Tolak Bukti
     inlineKeyboard = [
       [
         { text: "✅ Verifikasi Lunas", callback_data: `VERIFY_${orderId}` },
@@ -57,13 +54,33 @@ export default async function handler(req, res) {
       ]
     ];
     if (proofUrl && proofUrl.startsWith('http')) isPhoto = true;
-  } else if (type === 'ORDER_COMPLETED') {
-    const actor = completedBy || 'Sistem Web Otomatis';
-    messageText = `🚀 *TRANSAKSI SELESAI DARI WEB!*
+  } else if (type === 'ORDER_VERIFIED') {
+    messageText = `✅ *PEMBAYARAN DIVERIFIKASI LUNAS!*
 ━━━━━━━━━━━━━━━━━━
 🆔 *Order ID:* \`${orderId}\`
 📦 *Paket:* ${packageName || '-'}
 💰 *Nominal:* Rp ${Number(price || 0).toLocaleString('id-ID')}
+📧 *Email:* ${email || '-'}
+👤 *Diverifikasi oleh:* *${completedBy || 'Admin Web'}*
+⏱ *Waktu:* ${nowWIB}
+
+_Stok produk telah otomatis berkurang. Silakan kirim file profile eSIM ke email pembeli._`;
+  } else if (type === 'PROOF_REJECTED') {
+    messageText = `🚫 *BUKTI PEMBAYARAN DITOLAK!*
+━━━━━━━━━━━━━━━━━━
+🆔 *Order ID:* \`${orderId}\`
+📦 *Paket:* ${packageName || '-'}
+📧 *Email:* ${email || '-'}
+📝 *Alasan:* _${customNotes || '-'}_
+⏱ *Waktu:* ${nowWIB}
+
+_Pembeli telah diminta untuk mengunggah ulang bukti transfer sah via web/bot._`;
+  } else if (type === 'ORDER_COMPLETED') {
+    const actor = completedBy || 'Sistem Web Otomatis';
+    messageText = `🚀 *TRANSAKSI SELESAI & TERKIRIM!*
+━━━━━━━━━━━━━━━━━━
+🆔 *Order ID:* \`${orderId}\`
+📦 *Paket:* ${packageName || '-'}
 📧 *Email:* ${email || '-'}
 👤 *Diproses oleh:* *${actor}*
 ⏱ *Waktu:* ${nowWIB}`;
@@ -72,7 +89,6 @@ export default async function handler(req, res) {
   try {
     const replyMarkupObj = inlineKeyboard.length > 0 ? { inline_keyboard: inlineKeyboard } : undefined;
 
-    // Broadcast ke Grup dan Japri Admin
     const sendPromises = ALL_RECIPIENTS.map(chatId => {
       if (isPhoto) {
         return fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
