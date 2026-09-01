@@ -10,25 +10,14 @@ export default function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    const { package_name, price, email } = req.body;
-    
-    if (!package_name || !price || !email) {
-      return res.status(400).json({ success: false, error: 'Data tidak lengkap' });
+    const { order_id, proof_image } = req.body;
+    const order = global.orders.find(o => o.order_id === order_id);
+
+    if (order) {
+      order.proof_image = proof_image;
+      return res.status(200).json({ success: true, message: 'Bukti berhasil diunggah' });
     }
-
-    const orderId = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
-    const newOrder = {
-      order_id: orderId,
-      package_name,
-      price: Number(price),
-      email,
-      proof_image: null,
-      status: 'PENDING',
-      created_at: new Date().toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta' })
-    };
-
-    global.orders.unshift(newOrder);
-    return res.status(200).json({ success: true, order: newOrder });
+    return res.status(404).json({ error: 'Order not found' });
   }
 
   res.status(405).json({ error: 'Method Not Allowed' });
