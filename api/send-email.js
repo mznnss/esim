@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
-  const { email, orderId, packageName, qrCodeBase64, customNotes } = req.body;
+  const { email, orderId, packageName, qrCodeBase64, customNotes, type, rejectReason, remainingMinutes } = req.body;
 
   if (!email || !orderId) {
     return res.status(400).json({ error: 'Email dan Order ID wajib diisi' });
@@ -28,6 +28,52 @@ export default async function handler(req, res) {
     auth: { user: user, pass: pass }
   });
 
+  // =======================================================
+  // KASUS 1: EMAIL PENOLAKAN BUKTI PEMBAYARAN
+  // =======================================================
+  if (type === 'REJECT_PROOF') {
+    const rejectHtml = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: auto; padding: 25px; border: 1px solid #fee2e2; border-radius: 16px; background-color: #ffffff;">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <h2 style="color: #dc2626; margin: 0; font-size: 20px;">⚠️ Bukti Pembayaran Ditolak</h2>
+          <p style="color: #64748b; font-size: 13px; margin-top: 5px;">Pesanan eSIM #${orderId}</p>
+        </div>
+
+        <div style="background-color: #fef2f2; border-radius: 12px; padding: 16px; margin-bottom: 20px; font-size: 13px; color: #991b1b; border: 1px solid #fca5a5;">
+          <p style="margin: 0 0 6px 0;"><b>Paket:</b> ${packageName || '-'}</p>
+          <p style="margin: 0 0 6px 0;"><b>Alasan Penolakan:</b></p>
+          <div style="background-color: #ffffff; padding: 10px 12px; border-radius: 8px; border: 1px solid #fecaca; color: #b91c1c; font-style: italic;">
+            "${rejectReason || 'Bukti transfer tidak valid / dana belum masuk ke mutasi rekening.'}"
+          </div>
+        </div>
+
+        <p style="font-size: 13px; color: #334155; line-height: 1.6;">
+          Batas waktu penyelesaian pembayaran Anda tersisa <b>${remainingMinutes || 60} Menit</b>. Silakan transfer nominal yang sesuai dan unggah kembali bukti struk pembayaran asli melalui web atau bot Telegram kami sebelum pesanan otomatis dibatalkan sistem.
+        </p>
+
+        <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 20px 0;" />
+        <p style="text-align: center; color: #94a3b8; font-size: 11px; margin: 0;">
+          © 2026 eSIMGo • Rifki Cell. Email otomatis sistem.
+        </p>
+      </div>
+    `;
+
+    try {
+      await transporter.sendMail({
+        from: `"eSIMGo Verification" <${user}>`,
+        to: email,
+        subject: `[PERHATIAN] Bukti Pembayaran Pesanan #${orderId} Ditolak`,
+        html: rejectHtml
+      });
+      return res.status(200).json({ success: true, message: 'Email penolakan berhasil dikirim' });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  // =======================================================
+  // KASUS 2: EMAIL PENGIRIMAN PROFIL ESIM (LUNAS)
+  // =======================================================
   const attachments = [];
   if (qrCodeBase64) {
     const isPdf = qrCodeBase64.startsWith('data:application/pdf');
@@ -41,9 +87,9 @@ export default async function handler(req, res) {
   }
 
   const htmlContent = `
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
       <div style="text-align: center; margin-bottom: 20px;">
-        <h1 style="color: #4f46e5; margin: 0; font-size: 24px;">eSIMGo</h1>
+        <h1 style="color: #4f46e5; margin: 0; font-size: 24px;">eSIM<span style="color: #0f172a;">Go</span></h1>
         <p style="color: #64748b; font-size: 13px; margin-top: 5px;">Konfirmasi Aktivasi & QR Code eSIM Roaming</p>
       </div>
 
@@ -61,7 +107,7 @@ export default async function handler(req, res) {
 
       <h3 style="color: #0f172a; font-size: 16px; margin-bottom: 10px;">Panduan Pemasangan eSIM:</h3>
       <ol style="color: #334155; font-size: 13px; line-height: 1.6; padding-left: 20px;">
-        <li>Pastikan smartphone Anda terhubung ke jaringan Wi-Fi / Internet yang stabil.</li>
+        <li>Pastikan smartphone Anda terhubung ke jaringan Wi-Fi / Internet stabil.</li>
         <li>Buka menu <b>Pengaturan HP (Settings) &gt; Seluler / Jaringan Seluler</b>.</li>
         <li>Pilih menu <b>Tambah Paket Seluler (Add eSIM)</b>.</li>
         <li>Scan barcode QR Code yang ada di lampiran email ini.</li>
@@ -74,7 +120,7 @@ export default async function handler(req, res) {
 
       <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
       <p style="text-align: center; color: #94a3b8; font-size: 11px; margin: 0;">
-        © 2026 eSIMGo • Rifki Cell. Email ini dikirim otomatis oleh sistem.
+        © 2026 eSIMGo • Rifki Cell. Email otomatis sistem.
       </p>
     </div>
   `;
@@ -88,7 +134,6 @@ export default async function handler(req, res) {
       attachments: attachments
     });
 
-    // Update status COMPLETED di Firebase
     await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, {
       method: 'PATCH',
       body: JSON.stringify({
