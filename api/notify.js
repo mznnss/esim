@@ -69,8 +69,7 @@ _Stok produk telah otomatis berkurang. Silakan kirim file profile eSIM ke email 
     messageText = `🚫 *BUKTI PEMBAYARAN DITOLAK!*
 ━━━━━━━━━━━━━━━━━━
 🆔 *Order ID:* \`${orderId}\`
-📦 *Paket:* ${packageName || '-'}
-📧 *Email:* ${email || '-'}
+📦 *Paket:* ${packageName || '-'}\n📧 *Email:* ${email || '-'}
 📝 *Alasan:* _${customNotes || '-'}_
 ⏱ *Waktu:* ${nowWIB}
 
