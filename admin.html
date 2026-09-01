@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin Dashboard - Manajemen eSIM</title>
+  <title>Admin Dashboard - Manajemen eSIM & Stok</title>
 
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%234f46e5'/><path d='M25 25h35l15 15v35H25z' fill='none' stroke='white' stroke-width='8'/><path d='M40 45h20M40 60h20M50 35v35' stroke='white' stroke-width='7' stroke-linecap='round'/></svg>">
 
@@ -14,10 +14,9 @@
 </head>
 <body class="bg-slate-100 min-h-screen text-slate-800 relative antialiased">
 
-  <!-- TOAST CONTAINER -->
   <div id="toast-container" class="fixed top-5 right-5 z-[9999] flex flex-col gap-2 max-w-xs w-full pointer-events-none"></div>
 
-  <!-- SCREEN 1: PANEL LOGIN -->
+  <!-- SCREEN 1: LOGIN -->
   <div id="login-screen" class="fixed inset-0 z-50 bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-sm w-full p-8 shadow-2xl text-center border border-slate-100">
       <div class="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-500/30">
@@ -42,47 +41,40 @@
     </div>
   </div>
 
-  <!-- SCREEN 2: DASHBOARD UTAMA -->
+  <!-- SCREEN 2: MAIN DASHBOARD -->
   <div id="main-dashboard" class="hidden p-4 sm:p-8 max-w-7xl mx-auto space-y-8">
     
     <!-- HEADER -->
     <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
       <div class="flex items-center gap-3">
         <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-violet-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
-            <path d="M4 4a2 2 0 0 1 2-2h8.5L20 7.5V20a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4z" />
-            <path d="M9 10h6" />
-            <path d="M9 14h6" />
-            <path d="M12 7v10" />
-          </svg>
+          <i data-lucide="layers" class="w-6 h-6"></i>
         </div>
         <div>
           <h1 class="text-2xl font-black text-slate-900 leading-tight">Dashboard Pengelola eSIM</h1>
-          <p class="text-xs text-slate-500">Terhubung langsung dengan Bot Telegram & Realtime Database.</p>
+          <p class="text-xs text-slate-500">Manajemen stok produk otomatis & monitoring transaksi.</p>
         </div>
       </div>
 
       <div class="flex items-center gap-3">
-        <!-- SAKLAR TOKO 24 JAM -->
         <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 p-2 rounded-2xl">
           <button id="btn-toggle-store" onclick="toggleStoreStatus()" class="px-4 py-2 rounded-xl text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 transition flex items-center gap-1.5 shadow-sm">
             <i data-lucide="power" class="w-3.5 h-3.5"></i> <span id="store-status-btn-text">Buka Toko</span>
           </button>
         </div>
 
-        <!-- TOMBOL LOGOUT -->
         <button onclick="handleLogout()" class="px-3.5 py-2.5 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 transition flex items-center gap-1 border border-rose-200">
           <i data-lucide="log-out" class="w-3.5 h-3.5"></i> Keluar
         </button>
       </div>
     </div>
 
-    <!-- SEKSI 1: MANAJEMEN LAYANAN -->
+    <!-- SEKSI 1: PRODUK & STOK -->
     <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
       <div class="flex justify-between items-center mb-6">
         <div>
-          <h2 class="text-lg font-bold text-slate-900">Manajemen Paket Layanan</h2>
-          <p class="text-xs text-slate-500">Atur harga normal, harga promo diskon, dan kuota paket</p>
+          <h2 class="text-lg font-bold text-slate-900">Manajemen Paket & Stok Layanan</h2>
+          <p class="text-xs text-slate-500">Atur harga promo, kuota data, dan jumlah sisa stok eSIM</p>
         </div>
         <button onclick="openProductModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-sm">
           <i data-lucide="plus" class="w-4 h-4"></i> Tambah Layanan Baru
@@ -94,12 +86,12 @@
           <thead class="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500">
             <tr>
               <th class="p-3">Bendera</th>
-              <th class="p-3">Nama Paket / Negara</th>
+              <th class="p-3">Nama Paket</th>
               <th class="p-3">Operator</th>
-              <th class="p-3">Kuota Data</th>
+              <th class="p-3">Kuota</th>
               <th class="p-3">Masa Aktif</th>
-              <th class="p-3">Harga Normal</th>
               <th class="p-3">Harga Promo</th>
+              <th class="p-3 text-center">Sisa Stok</th>
               <th class="p-3 text-center">Aksi</th>
             </tr>
           </thead>
@@ -113,7 +105,7 @@
       <div class="flex justify-between items-center mb-6">
         <div>
           <h2 class="text-lg font-bold text-slate-900">Pesanan Masuk & Verifikasi</h2>
-          <p class="text-xs text-slate-500">Periksa bukti struk transfer dan verifikasi / tolak pesanan</p>
+          <p class="text-xs text-slate-500">Stok berkurang otomatis saat order selesai/lunas</p>
         </div>
         <button onclick="loadOrders()" class="bg-slate-900 hover:bg-slate-800 text-white text-xs px-4 py-2.5 rounded-xl font-bold transition flex items-center gap-1.5">
           <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Refresh Data
@@ -141,7 +133,7 @@
 
   </div>
 
-  <!-- MODAL KONFIRMASI / ACTION KUSTOM (GANTI CONFIRM() JADUL) -->
+  <!-- MODAL KONFIRMASI -->
   <div id="custom-confirm-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 text-center animate-in fade-in zoom-in duration-200">
       <div id="confirm-modal-icon-container" class="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3">
@@ -160,14 +152,14 @@
     </div>
   </div>
 
-  <!-- MODAL TOLAK BUKTI BAYAR (GANTI PROMPT() JELEK) -->
+  <!-- MODAL TOLAK BUKTI BAYAR -->
   <div id="reject-reason-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in duration-200">
       <div class="flex items-center gap-2 mb-2">
         <span class="bg-rose-100 text-rose-600 p-2 rounded-xl"><i data-lucide="alert-triangle" class="w-4 h-4"></i></span>
         <h3 class="text-base font-bold text-slate-900">Tolak Bukti Pembayaran</h3>
       </div>
-      <p class="text-xs text-slate-500 mb-4">Pilih atau ketik alasan penolakan untuk pesanan <b id="reject-target-order-text" class="text-slate-800 font-mono"></b>. Notifikasi ini akan langsung dikirimkan ke pembeli.</p>
+      <p class="text-xs text-slate-500 mb-4">Pilih alasan penolakan untuk order <b id="reject-target-order-text" class="text-slate-800 font-mono"></b>.</p>
 
       <div class="space-y-3 text-xs">
         <div>
@@ -176,16 +168,13 @@
         </div>
 
         <div class="flex flex-wrap gap-1.5 pt-1">
-          <span class="text-[11px] text-slate-400 font-semibold block w-full">Template Cepat:</span>
           <button type="button" onclick="setRejectTemplate('Bukti transfer tidak valid / dana belum masuk ke mutasi rekening.')" class="text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-2.5 py-1 rounded-lg transition font-medium">Dana Belum Masuk</button>
           <button type="button" onclick="setRejectTemplate('Nominal yang ditransfer kurang dari total tagihan invoice.')" class="text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-2.5 py-1 rounded-lg transition font-medium">Nominal Kurang</button>
           <button type="button" onclick="setRejectTemplate('Foto bukti transfer buram / tidak terbaca dengan jelas.')" class="text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-2.5 py-1 rounded-lg transition font-medium">Foto Buram</button>
         </div>
 
         <div class="grid grid-cols-2 gap-2.5 pt-3">
-          <button onclick="closeRejectModal()" class="w-full py-2.5 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition">
-            Batal
-          </button>
+          <button onclick="closeRejectModal()" class="w-full py-2.5 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition">Batal</button>
           <button id="btn-execute-reject" onclick="executeRejectOrder()" class="w-full py-2.5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-md shadow-rose-600/20 transition flex items-center justify-center gap-1.5">
             <i data-lucide="send" class="w-3.5 h-3.5"></i> Tolak & Kirim
           </button>
@@ -240,7 +229,7 @@
     </div>
   </div>
 
-  <!-- MODAL EDIT / TAMBAH PRODUK -->
+  <!-- MODAL EDIT / TAMBAH PRODUK + STOK -->
   <div id="product-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 relative animate-in fade-in zoom-in duration-200">
       <button onclick="closeProductModal()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-600">
@@ -252,14 +241,15 @@
       <form onsubmit="saveProduct(event)" class="space-y-3 text-xs">
         <input type="hidden" id="prod-id" />
         
-        <div>
-          <label class="block font-bold text-slate-700 mb-1">Emoji Bendera</label>
-          <input type="text" id="prod-flag" placeholder="🇯🇵" required class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600" />
-        </div>
-
-        <div>
-          <label class="block font-bold text-slate-700 mb-1">Nama Negara / Paket</label>
-          <input type="text" id="prod-name" placeholder="Jepang (Japan)" required class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600" />
+        <div class="grid grid-cols-3 gap-2">
+          <div class="col-span-1">
+            <label class="block font-bold text-slate-700 mb-1">Bendera</label>
+            <input type="text" id="prod-flag" placeholder="🇯🇵" required class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600" />
+          </div>
+          <div class="col-span-2">
+            <label class="block font-bold text-slate-700 mb-1">Nama Paket / Negara</label>
+            <input type="text" id="prod-name" placeholder="Jepang (Japan)" required class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600" />
+          </div>
         </div>
 
         <div>
@@ -278,14 +268,18 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-2">
+        <div class="grid grid-cols-3 gap-2">
           <div>
-            <label class="block font-bold text-slate-700 mb-1">Harga Normal (Coret)</label>
+            <label class="block font-bold text-slate-700 mb-1">Harga Normal</label>
             <input type="number" id="prod-original-price" placeholder="50000" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600" />
           </div>
           <div>
-            <label class="block font-bold text-indigo-700 mb-1">Harga Promo (Bayar)</label>
+            <label class="block font-bold text-indigo-700 mb-1">Harga Promo</label>
             <input type="number" id="prod-price" placeholder="30000" required class="w-full border border-indigo-200 bg-indigo-50/30 rounded-xl px-3 py-2 text-sm font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-600" />
+          </div>
+          <div>
+            <label class="block font-bold text-emerald-700 mb-1">Jumlah Stok</label>
+            <input type="number" id="prod-stock" placeholder="10" min="0" required class="w-full border border-emerald-200 bg-emerald-50/30 rounded-xl px-3 py-2 text-sm font-bold text-emerald-700 outline-none focus:ring-2 focus:ring-emerald-600" />
           </div>
         </div>
 
@@ -301,7 +295,7 @@
     </div>
   </div>
 
-  <!-- MODAL PREVIEW BUKTI TRANSFER -->
+  <!-- PREVIEW BUKTI -->
   <div id="image-modal" class="fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-sm hidden items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl relative text-center border border-slate-100 animate-in fade-in zoom-in duration-200">
       <button onclick="closeImageModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
@@ -317,12 +311,7 @@
   <script>
     lucide.createIcons();
 
-    // ==================== KREDENSIAL LOGIN ADMIN ====================
-    const ADMIN_AUTH = {
-      user: "admin",
-      pass: "esim123"
-    };
-
+    const ADMIN_AUTH = { user: "admin", pass: "esim123" };
     const BOT_TOKEN = "8636838151:AAFpbytiio0xBSqW7hrqddhfLf3e2XwHrpY";
     const FIREBASE_DB_URL = "https://esim-store-d7580-default-rtdb.europe-west1.firebasedatabase.app";
 
@@ -333,10 +322,8 @@
     let activeRejectOrderId = null;
     let confirmCallback = null;
 
-    // OTENTIKASI STATUS LOGIN
     function checkAuth() {
-      const isLogged = sessionStorage.getItem('admin_logged_in');
-      if (isLogged === 'true') {
+      if (sessionStorage.getItem('admin_logged_in') === 'true') {
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('main-dashboard').classList.remove('hidden');
         loadStoreStatus();
@@ -352,7 +339,6 @@
       e.preventDefault();
       const u = document.getElementById('login-user').value.trim();
       const p = document.getElementById('login-pass').value.trim();
-
       if (u === ADMIN_AUTH.user && p === ADMIN_AUTH.pass) {
         sessionStorage.setItem('admin_logged_in', 'true');
         checkAuth();
@@ -368,29 +354,18 @@
       showToast('Telah keluar dari akun admin.', 'info');
     }
 
-    // TOAST SYSTEM
     function showToast(message, type = 'info') {
       const container = document.getElementById('toast-container');
       const toast = document.createElement('div');
-      
       const colors = {
         success: 'bg-emerald-50 text-emerald-800 border-emerald-300',
         error: 'bg-rose-50 text-rose-800 border-rose-300',
         info: 'bg-indigo-50 text-indigo-800 border-indigo-300'
       };
-
-      const icons = {
-        success: 'check-circle-2',
-        error: 'alert-circle',
-        info: 'info'
-      };
+      const icons = { success: 'check-circle-2', error: 'alert-circle', info: 'info' };
 
       toast.className = `flex items-center gap-3 p-4 rounded-2xl border shadow-lg ${colors[type]} pointer-events-auto transform translate-y-[-20px] opacity-0 transition-all duration-300`;
-      toast.innerHTML = `
-        <i data-lucide="${icons[type]}" class="w-5 h-5 flex-shrink-0"></i>
-        <span class="text-xs font-semibold">${message}</span>
-      `;
-
+      toast.innerHTML = `<i data-lucide="${icons[type]}" class="w-5 h-5 flex-shrink-0"></i><span class="text-xs font-semibold">${message}</span>`;
       container.appendChild(toast);
       lucide.createIcons();
 
@@ -401,23 +376,15 @@
       }, 3500);
     }
 
-    // MODAL KONFIRMASI KUSTOM
     function showConfirmModal({ title, desc, btnText, btnColor, icon, onConfirm }) {
       document.getElementById('confirm-modal-title').innerText = title || "Konfirmasi";
-      document.getElementById('confirm-modal-desc').innerText = desc || "Apakah Anda yakin ingin melanjutkan tindakan ini?";
-      
+      document.getElementById('confirm-modal-desc').innerText = desc || "Apakah Anda yakin?";
       const btn = document.getElementById('btn-confirm-execute');
       btn.innerText = btnText || "Lanjutkan";
       btn.className = `w-full py-2.5 text-xs font-bold text-white rounded-xl shadow-sm transition ${btnColor || 'bg-indigo-600 hover:bg-indigo-700'}`;
-      
-      const iconContainer = document.getElementById('confirm-modal-icon-container');
-      iconContainer.className = `w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3 ${btnColor?.includes('rose') ? 'bg-rose-100 text-rose-600' : 'bg-indigo-100 text-indigo-600'}`;
-      
-      const iconEl = document.getElementById('confirm-modal-icon');
-      iconEl.setAttribute('data-lucide', icon || 'help-circle');
-      
+      document.getElementById('confirm-modal-icon-container').className = `w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3 ${btnColor?.includes('rose') ? 'bg-rose-100 text-rose-600' : 'bg-indigo-100 text-indigo-600'}`;
+      document.getElementById('confirm-modal-icon').setAttribute('data-lucide', icon || 'help-circle');
       confirmCallback = onConfirm;
-      
       document.getElementById('custom-confirm-modal').classList.remove('hidden');
       document.getElementById('custom-confirm-modal').classList.add('flex');
       lucide.createIcons();
@@ -426,29 +393,23 @@
     function closeConfirmModal(result) {
       document.getElementById('custom-confirm-modal').classList.add('hidden');
       document.getElementById('custom-confirm-modal').classList.remove('flex');
-      if (result && typeof confirmCallback === 'function') {
-        confirmCallback();
-      }
+      if (result && typeof confirmCallback === 'function') confirmCallback();
       confirmCallback = null;
     }
 
-    // ==================== SAKLAR TOKO ====================
     async function loadStoreStatus() {
       try {
         const res = await fetch(`${FIREBASE_DB_URL}/store_settings/is_open.json`);
         const status = await res.json();
         isStoreOpen = (status !== null) ? status : true;
         renderStoreStatusUI();
-      } catch (err) {
-        console.error("Gagal load status toko:", err);
-      }
+      } catch (err) {}
     }
 
     function renderStoreStatusUI() {
       const btn = document.getElementById('btn-toggle-store');
       const text = document.getElementById('store-status-btn-text');
       if (!btn || !text) return;
-
       if (isStoreOpen) {
         text.innerText = "Toko Buka (Klik utk Tutup)";
         btn.className = "px-4 py-2 rounded-xl text-xs font-extrabold text-white bg-rose-600 hover:bg-rose-700 transition flex items-center gap-1.5 shadow-sm";
@@ -460,29 +421,13 @@
     }
 
     async function toggleStoreStatus() {
-      const btn = document.getElementById('btn-toggle-store');
-      if (btn) btn.disabled = true;
-
       isStoreOpen = !isStoreOpen;
       renderStoreStatusUI();
-
-      try {
-        await fetch(`${FIREBASE_DB_URL}/store_settings/is_open.json`, {
-          method: 'PUT',
-          body: JSON.stringify(isStoreOpen)
-        });
-
-        showToast(isStoreOpen ? 'Toko berhasil DIBUKA!' : 'Toko berhasil DITUTUP!', isStoreOpen ? 'success' : 'info');
-      } catch (err) {
-        showToast('Gagal mengubah status di Firebase', 'error');
-        isStoreOpen = !isStoreOpen;
-        renderStoreStatusUI();
-      } finally {
-        if (btn) btn.disabled = false;
-      }
+      await fetch(`${FIREBASE_DB_URL}/store_settings/is_open.json`, { method: 'PUT', body: JSON.stringify(isStoreOpen) });
+      showToast(isStoreOpen ? 'Toko DIBUKA!' : 'Toko DITUTUP!', isStoreOpen ? 'success' : 'info');
     }
 
-    // ==================== PRODUK LAYANAN ====================
+    // ==================== PRODUK & STOK ====================
     async function loadProducts() {
       try {
         const res = await fetch(`${FIREBASE_DB_URL}/products.json`);
@@ -494,7 +439,8 @@
 
         Object.keys(currentProducts).forEach(key => {
           const p = currentProducts[key];
-          const originalPrice = p.original_price ? `Rp ${Number(p.original_price).toLocaleString('id-ID')}` : '-';
+          const stock = p.stock !== undefined ? Number(p.stock) : 10;
+          const isOutOfStock = stock <= 0;
           
           tbody.innerHTML += `
             <tr class="hover:bg-slate-50 transition">
@@ -503,8 +449,12 @@
               <td class="p-3 text-slate-500">${p.network || '-'}</td>
               <td class="p-3 font-semibold">${p.quota || '-'}</td>
               <td class="p-3 text-slate-600">${p.duration || '-'}</td>
-              <td class="p-3 text-slate-400 line-through text-xs">${originalPrice}</td>
               <td class="p-3 font-bold text-emerald-600">Rp ${Number(p.price || 0).toLocaleString('id-ID')}</td>
+              <td class="p-3 text-center">
+                <span class="px-2.5 py-1 text-xs rounded-full font-bold ${isOutOfStock ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}">
+                  ${isOutOfStock ? 'HABIS (0)' : stock}
+                </span>
+              </td>
               <td class="p-3 text-center space-x-2">
                 <button onclick="editProduct('${key}')" class="text-indigo-600 hover:text-indigo-800 text-xs font-bold">Edit</button>
                 <button onclick="confirmDeleteProduct('${key}')" class="text-rose-600 hover:text-rose-800 text-xs font-bold">Hapus</button>
@@ -526,6 +476,7 @@
       document.getElementById('prod-duration').value = '';
       document.getElementById('prod-original-price').value = '';
       document.getElementById('prod-price').value = '';
+      document.getElementById('prod-stock').value = '10';
       document.getElementById('prod-badge').value = '';
       document.getElementById('product-modal').classList.remove('hidden');
       document.getElementById('product-modal').classList.add('flex');
@@ -547,6 +498,7 @@
       document.getElementById('prod-duration').value = p.duration || '';
       document.getElementById('prod-original-price').value = p.original_price || '';
       document.getElementById('prod-price').value = p.price || '';
+      document.getElementById('prod-stock').value = p.stock !== undefined ? p.stock : 10;
       document.getElementById('prod-badge').value = p.badge || '';
       document.getElementById('product-modal').classList.remove('hidden');
       document.getElementById('product-modal').classList.add('flex');
@@ -565,6 +517,7 @@
         duration: document.getElementById('prod-duration').value,
         original_price: originalPriceVal ? Number(originalPriceVal) : null,
         price: Number(document.getElementById('prod-price').value),
+        stock: parseInt(document.getElementById('prod-stock').value, 10) || 0,
         badge: document.getElementById('prod-badge').value
       };
 
@@ -574,7 +527,7 @@
       });
 
       closeProductModal();
-      showToast('Paket layanan tersimpan.', 'success');
+      showToast('Paket layanan & stok tersimpan.', 'success');
       loadProducts();
     }
 
@@ -593,7 +546,27 @@
       });
     }
 
-    // ==================== PESANAN MASUK (SINKRON, VERIFIKASI & TOLAK BUKTI) ====================
+    // Helper Potong Stok Otomatis Saat Order Lunas
+    async function reduceProductStock(packageName) {
+      try {
+        const res = await fetch(`${FIREBASE_DB_URL}/products.json`);
+        const prods = await res.json() || {};
+        for (const [key, p] of Object.entries(prods)) {
+          if (!p) continue;
+          if (packageName.includes(p.name) || p.name.includes(packageName)) {
+            const currentStock = p.stock !== undefined ? Number(p.stock) : 10;
+            const newStock = Math.max(0, currentStock - 1);
+            await fetch(`${FIREBASE_DB_URL}/products/${key}/stock.json`, {
+              method: 'PUT',
+              body: JSON.stringify(newStock)
+            });
+            break;
+          }
+        }
+      } catch (e) {}
+    }
+
+    // ==================== PESANAN MASUK ====================
     async function loadOrders() {
       const tbody = document.getElementById('orders-table-body');
       try {
@@ -615,15 +588,10 @@
           const orderTime = new Date(o.created_at || o.pending_since).getTime();
           const diffMinutes = Math.floor((now - orderTime) / (1000 * 60));
 
-          // Auto-delete DRAFT_EMAIL >= 5 Menit
-          if (o.status === 'DRAFT_EMAIL') {
-            if (diffMinutes >= 5) {
-              fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, { method: 'DELETE' });
-            }
+          if (o.status === 'DRAFT_EMAIL' && diffMinutes >= 5) {
+            fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, { method: 'DELETE' });
             continue;
           }
-
-          // Auto-delete PENDING >= 60 Menit
           if (o.status === 'PENDING' && diffMinutes >= 60) {
             fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, { method: 'DELETE' });
             continue;
@@ -634,22 +602,7 @@
           const isPaid = o.status === 'PAID';
           const isCompleted = o.status === 'COMPLETED';
 
-          // Format Waktu WIB
           let displayTime = o.waktu || '-';
-          if (!o.waktu && o.created_at) {
-            try {
-              const d = new Date(o.created_at);
-              displayTime = new Intl.DateTimeFormat('id-ID', {
-                timeZone: 'Asia/Jakarta',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: false
-              }).format(d) + ' WIB';
-            } catch (e) {
-              displayTime = o.created_at;
-            }
-          }
-
           const proofUrl = o.payment_proof_url || o.proof_image || o.proof_url;
           
           let statusBadgeText = o.status || 'PENDING';
@@ -710,41 +663,38 @@
           `;
         }
         lucide.createIcons();
-      } catch (err) {
-        console.error("Gagal load orders:", err);
-      }
+      } catch (err) {}
     }
 
     async function verifyOrder(orderId) {
       await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, {
         method: 'PATCH',
-        body: JSON.stringify({ 
-          status: 'PAID',
-          verified_at: new Date().toISOString()
-        })
+        body: JSON.stringify({ status: 'PAID', verified_at: new Date().toISOString() })
       });
 
-      try {
-        const res = await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`);
-        const order = await res.json();
-        if (order?.buyer_chat_id) {
-          fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              chat_id: order.buyer_chat_id,
-              text: `🎉 *Pembayaran untuk Order #${orderId} DITERIMA & LUNAS!*\n\nAdmin sedang menyiapkan profile eSIM Anda. File akan segera dikirimkan ke chat ini & email Anda.`,
-              parse_mode: 'Markdown'
-            })
-          });
-        }
-      } catch (e) {}
+      const res = await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`);
+      const order = await res.json();
+      if (order?.package_name) {
+        await reduceProductStock(order.package_name);
+      }
 
-      showToast(`Pesanan ${orderId} telah diverifikasi LUNAS!`, 'success');
+      if (order?.buyer_chat_id) {
+        fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: order.buyer_chat_id,
+            text: `🎉 *Pembayaran untuk Order #${orderId} DITERIMA & LUNAS!*\n\nAdmin sedang menyiapkan profile eSIM Anda. File akan segera dikirimkan ke chat ini & email Anda.`,
+            parse_mode: 'Markdown'
+          })
+        });
+      }
+
+      showToast(`Pesanan ${orderId} diverifikasi & stok terpotong!`, 'success');
+      loadProducts();
       loadOrders();
     }
 
-    // TOLAK BUKTI BAYAR KUSTOM MODAL
     function openRejectModal(orderId) {
       activeRejectOrderId = orderId;
       document.getElementById('reject-target-order-text').innerText = `#${orderId}`;
@@ -767,7 +717,7 @@
     async function executeRejectOrder() {
       if (!activeRejectOrderId) return;
       const orderId = activeRejectOrderId;
-      const reason = document.getElementById('reject-reason-input').value.trim() || "Bukti transfer tidak valid / dana belum masuk ke mutasi rekening.";
+      const reason = document.getElementById('reject-reason-input').value.trim() || "Bukti transfer tidak valid.";
       
       const btn = document.getElementById('btn-execute-reject');
       const originalText = btn.innerHTML;
@@ -777,10 +727,8 @@
       try {
         const res = await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`);
         const order = await res.json();
-
         const createdTime = new Date(order.pending_since || order.created_at).getTime();
-        const diffMinutes = Math.floor((Date.now() - createdTime) / (1000 * 60));
-        const remainingMinutes = Math.max(1, 60 - diffMinutes);
+        const remainingMinutes = Math.max(1, 60 - Math.floor((Date.now() - createdTime) / (1000 * 60)));
 
         await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, {
           method: 'PATCH',
@@ -809,7 +757,7 @@
         showToast(`Bukti pembayaran #${orderId} berhasil ditolak!`, 'info');
         loadOrders();
       } catch (e) {
-        showToast('Gagal memproses penolakan bukti', 'error');
+        showToast('Gagal memproses penolakan', 'error');
       } finally {
         btn.innerHTML = originalText;
         btn.disabled = false;
@@ -832,13 +780,10 @@
               body: JSON.stringify({ orderId })
             });
             const data = await res.json();
-            if (res.ok && data.success) {
-              showToast(`Pengingat berhasil dikirim (${orderId})!`, 'success');
-            } else {
-              showToast(data.error || 'Gagal mengirim pengingat', 'error');
-            }
+            if (res.ok && data.success) showToast(`Pengingat berhasil dikirim (${orderId})!`, 'success');
+            else showToast(data.error || 'Gagal mengirim pengingat', 'error');
           } catch (e) {
-            showToast('Koneksi gagal saat kirim pengingat', 'error');
+            showToast('Koneksi gagal', 'error');
           }
         }
       });
@@ -859,7 +804,6 @@
       });
     }
 
-    // MODAL KIRIM EMAIL
     function openSendEmailModal(email, orderId, packageName) {
       activeSendEmailOrder = { email, orderId, packageName };
       document.getElementById('email-modal-target').value = email || '-';
@@ -869,7 +813,6 @@
       document.getElementById('esim-file-input').value = "";
       document.getElementById('esim-image-preview').classList.add('hidden');
       selectedEsimFileBase64 = null;
-
       document.getElementById('send-email-modal').classList.remove('hidden');
       document.getElementById('send-email-modal').classList.add('flex');
       lucide.createIcons();
@@ -901,13 +844,10 @@
 
     async function executeSendEmailWithAttachment() {
       if (!activeSendEmailOrder) return;
-
       const btn = document.getElementById('btn-execute-send-email');
       const originalText = btn.innerHTML;
       btn.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Mengirim...`;
       btn.disabled = true;
-
-      const customNotes = document.getElementById('email-modal-notes').value.trim();
 
       try {
         const res = await fetch('/api/send-email', {
@@ -918,12 +858,10 @@
             orderId: activeSendEmailOrder.orderId,
             packageName: activeSendEmailOrder.packageName,
             qrCodeBase64: selectedEsimFileBase64,
-            customNotes: customNotes
+            customNotes: document.getElementById('email-modal-notes').value.trim()
           })
         });
-
         const data = await res.json();
-
         if (res.ok && data.success) {
           showToast(`QR/PDF eSIM berhasil dikirim ke ${activeSendEmailOrder.email}!`, 'success');
           closeSendEmailModal();
@@ -940,7 +878,6 @@
       }
     }
 
-    // PREVIEW BUKTI BAYAR LANGSUNG DARI URL TELEGRAM / FIREBASE
     function viewImage(url) {
       document.getElementById('modal-proof-img').src = url;
       document.getElementById('image-modal').classList.remove('hidden');
