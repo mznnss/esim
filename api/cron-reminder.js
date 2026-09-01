@@ -22,8 +22,9 @@ export default async function handler(req, res) {
       const createdTime = new Date(order.pending_since || order.created_at).getTime();
       const diffMinutes = Math.floor((now - createdTime) / (1000 * 60));
 
-      // 1. Ingatkan Pembeli setelah 5 Menit (Hanya dikirim 1x)
+      // 1. PENGINGAT OTOMATIS SETELAH 5 MENIT (Dikirim 1x)
       if (diffMinutes >= 5 && diffMinutes < 60 && !order.reminder_sent) {
+        // Kirim notifikasi chat ke Telegram Pembeli
         if (order.buyer_chat_id) {
           await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
             method: 'POST',
@@ -37,70 +38,70 @@ Pesanan *#${orderId}* (${order.package_name}) belum menerima pembayaran.
 💰 *Total Tagihan:* Rp ${Number(order.price).toLocaleString('id-ID')}
 ⏳ *Sisa Waktu:* ${60 - diffMinutes} Menit
 
-Silakan segera selesaikan pembayaran via QRIS dan kirimkan bukti struk agar pesanan tidak dibatalkan otomatis.`,
+Silakan segera selesaikan transfer via QRIS dan kirimkan bukti bayar agar pesanan tidak otomatis terhapus sistem.`,
               parse_mode: 'Markdown'
             })
           });
         }
 
+        // Kirim email pengingat ke Email Pembeli
         if (order.email) {
           await transporter.sendMail({
             from: `"eSIMGo Billing" <${GMAIL_USER}>`,
             to: order.email,
             subject: `[PENTING] Segera Selesaikan Pembayaran Pesanan #${orderId}`,
             html: `
-              <div style="background-color:#12141a;color:#fff;padding:24px;border-radius:12px;font-family:sans-serif;">
-                <h3 style="color:#f59e0b;">⏰ Pengingat Pembayaran eSIMGo</h3>
-                <p>Pesanan Anda <b>#${orderId}</b> (${order.package_name}) belum dibayar.</p>
-                <p>Sisa waktu pembayaran: <b>${60 - diffMinutes} Menit</b>. Segera selesaikan sebelum dibatalkan otomatis.</p>
+              <div style="background-color:#12141a;color:#ffffff;padding:24px;border-radius:14px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:500px;margin:0 auto;">
+                <h3 style="color:#f59e0b;margin-top:0;">⏰ Pengingat Pembayaran eSIMGo</h3>
+                <p style="color:#cbd5e1;font-size:13px;line-height:1.5;">Pesanan Anda <b>#${orderId}</b> (<b>${order.package_name}</b>) sebesar <b>Rp ${Number(order.price).toLocaleString('id-ID')}</b> belum dibayar.</p>
+                <p style="color:#f87171;font-size:12px;line-height:1.5;">Sisa batas waktu pembayaran: <b>${60 - diffMinutes} Menit</b>. Segera selesaikan sebelum data pesanan dihapus permanen oleh sistem.</p>
               </div>
             `
           });
         }
 
+        // Tandai flag reminder_sent agar tidak berulang
         await fetch(`${FIREBASE_DB_URL}/orders/${orderId}/reminder_sent.json`, {
           method: 'PUT',
           body: JSON.stringify(true)
         });
       }
 
-      // 2. Batalkan Otomatis jika sudah >= 60 Menit (1 Jam)
+      // 2. OTOMATIS HAPUS DARI FIREBASE JIKA LEBIH DARI 1 JAM (60 MENIT)
       if (diffMinutes >= 60) {
+        // HAPUS PERMANEN DARI FIREBASE REALTIME DATABASE
         await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, {
-          method: 'PATCH',
-          body: JSON.stringify({
-            status: 'CANCELLED',
-            cancelled_reason: 'Expired (Melewati batas 1 jam)',
-            cancelled_at: new Date().toISOString()
-          })
+          method: 'DELETE'
         });
 
+        // Kirim notifikasi pembatalan ke Telegram Pembeli
         if (order.buyer_chat_id) {
           await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               chat_id: order.buyer_chat_id,
-              text: `❌ *PESANAN #${orderId} DIBATALKAN*
+              text: `❌ *PESANAN #${orderId} KADALUARSA & DIHAPUS*
 ━━━━━━━━━━━━━━━━━━
-Batas waktu pembayaran 1 jam telah habis. Pesanan Anda otomatis dibatalkan sistem.
+Batas waktu pembayaran 1 jam telah habis. Pesanan Anda otomatis dibatalkan dan dihapus dari sistem.
 Ketik /start jika ingin membuat pesanan baru.`,
               parse_mode: 'Markdown'
             })
           });
         }
 
+        // Kirim notifikasi penghapusan ke Grup Admin
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             chat_id: GROUP_ADMIN_ID,
-            text: `❌ *ORDER EXPIRED & DIBATALKAN OTOMATIS*
+            text: `🗑 *ORDER DIHAPUS OTOMATIS DARI DATABASE*
 ━━━━━━━━━━━━━━━━━━
 🆔 *Order ID:* \`${orderId}\`
 📦 *Paket:* ${order.package_name}
 📧 *Email:* ${order.email}
-_Alasan: Tidak ada pembayaran dalam 1 jam._`,
+_Status: Dihapus permanen dari Firebase karena tidak ada pembayaran dalam 1 jam._`,
             parse_mode: 'Markdown'
           })
         });
