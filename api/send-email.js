@@ -1,17 +1,14 @@
 import nodemailer from 'nodemailer';
 
+const FIREBASE_DB_URL = "https://esim-store-d7580-default-rtdb.europe-west1.firebasedatabase.app";
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
   const { email, orderId, packageName, qrCodeBase64, customNotes } = req.body;
 
@@ -28,10 +25,7 @@ export default async function handler(req, res) {
 
   const transporter = nodemailer.createTransport({
     service: 'gmail',
-    auth: {
-      user: user,
-      pass: pass
-    }
+    auth: { user: user, pass: pass }
   });
 
   const attachments = [];
@@ -47,9 +41,9 @@ export default async function handler(req, res) {
   }
 
   const htmlContent = `
-    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
       <div style="text-align: center; margin-bottom: 20px;">
-        <h1 style="color: #4f46e5; margin: 0; font-size: 24px;">eSIM<span style="color: #0f172a;">Go</span></h1>
+        <h1 style="color: #4f46e5; margin: 0; font-size: 24px;">eSIMGo</h1>
         <p style="color: #64748b; font-size: 13px; margin-top: 5px;">Konfirmasi Aktivasi & QR Code eSIM Roaming</p>
       </div>
 
@@ -92,6 +86,15 @@ export default async function handler(req, res) {
       subject: `[eSIMGo] Profil QR Code eSIM Anda Siap Digunakan - Order #${orderId}`,
       html: htmlContent,
       attachments: attachments
+    });
+
+    // Update status COMPLETED di Firebase
+    await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        status: 'COMPLETED',
+        completed_at: new Date().toISOString()
+      })
     });
 
     return res.status(200).json({ success: true, message: 'Email berhasil dikirim via Gmail SMTP' });
