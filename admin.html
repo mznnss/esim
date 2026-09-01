@@ -546,7 +546,6 @@
       });
     }
 
-    // FUNGSI POTONG STOK AKURAT
     async function reduceProductStock(packageName) {
       if (!packageName) return;
       try {
@@ -568,9 +567,7 @@
             break;
           }
         }
-      } catch (e) {
-        console.error("Gagal potong stok:", e);
-      }
+      } catch (e) {}
     }
 
     // PESANAN MASUK
@@ -694,12 +691,23 @@
           })
         });
 
-        // Potong stok otomatis
         if (order.package_name) {
           await reduceProductStock(order.package_name);
         }
 
-        // Broadcast Notifikasi ke Grup Telegram
+        // Kunci tombol di Telegram
+        if (order.telegram_message_id && order.telegram_chat_id) {
+          fetch(`https://api.telegram.org/bot${BOT_TOKEN}/editMessageReplyMarkup`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: order.telegram_chat_id,
+              message_id: order.telegram_message_id,
+              reply_markup: { inline_keyboard: [[{ text: "✅ Terverifikasi Lunas oleh Admin (Web)", callback_data: "DONE" }]] }
+            })
+          }).catch(e => {});
+        }
+
         fetch('/api/notify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -713,7 +721,6 @@
           })
         }).catch(e => {});
 
-        // Notifikasi ke Telegram Pembeli
         if (order.buyer_chat_id) {
           fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
             method: 'POST',
@@ -769,7 +776,6 @@
         const createdTime = new Date(order.pending_since || order.created_at).getTime();
         const remainingMinutes = Math.max(1, 60 - Math.floor((Date.now() - createdTime) / (1000 * 60)));
 
-        // 1. Reset Bukti di Firebase & Ubah Status Jadi PENDING dengan Flag Rejected
         await fetch(`${FIREBASE_DB_URL}/orders/${orderId}.json`, {
           method: 'PATCH',
           body: JSON.stringify({
@@ -782,7 +788,19 @@
           })
         });
 
-        // 2. Broadcast Laporan Penolakan ke Grup Telegram
+        // Kunci tombol di Telegram
+        if (order.telegram_message_id && order.telegram_chat_id) {
+          fetch(`https://api.telegram.org/bot${BOT_TOKEN}/editMessageReplyMarkup`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: order.telegram_chat_id,
+              message_id: order.telegram_message_id,
+              reply_markup: { inline_keyboard: [[{ text: "🚫 Ditolak oleh Admin (Web)", callback_data: "DONE" }]] }
+            })
+          }).catch(e => {});
+        }
+
         fetch('/api/notify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -796,7 +814,6 @@
           })
         }).catch(e => {});
 
-        // 3. Notifikasi ke Telegram Pembeli
         if (order.buyer_chat_id) {
           fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
             method: 'POST',
@@ -812,7 +829,6 @@
           }).catch(e => {});
         }
 
-        // 4. Kirim Email Penolakan ke Pembeli
         if (order.email) {
           fetch('/api/send-email', {
             method: 'POST',
@@ -941,7 +957,6 @@
         const data = await res.json();
 
         if (res.ok && data.success) {
-          // Broadcast Status Selesai ke Telegram Grup
           fetch('/api/notify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
